@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Toast } from "@/components/ui/Toast";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
-import type { Merchant, SaleEvent } from "@/lib/repositories/types";
+import type { Merchant, PriceCandidate, SaleEvent } from "@/lib/repositories/types";
 import { buildAffiliateUrl } from "@/lib/utils/affiliate";
 import { detectMerchantIdFromUrl, extractAmazonAsin } from "@/lib/utils/merchant";
 import { calculateEffectivePrice, formatPrice } from "@/lib/utils/price";
@@ -35,6 +35,74 @@ function parseDesiredPrice(value: string): number | null {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+type CandidateDraft = {
+  id: string;
+  merchantId: string;
+  originalUrl: string;
+  productPrice: string;
+  shippingFee: string;
+  couponDiscount: string;
+  grantedPoints: string;
+  pointRate: string;
+  priceMemo: string;
+};
+
+function createCandidateDraft(merchantId = ""): CandidateDraft {
+  return {
+    id: crypto.randomUUID(),
+    merchantId,
+    originalUrl: "",
+    productPrice: "",
+    shippingFee: "",
+    couponDiscount: "",
+    grantedPoints: "",
+    pointRate: "1",
+    priceMemo: ""
+  };
+}
+
+function parseCandidateDrafts(
+  drafts: CandidateDraft[],
+  merchants: Merchant[],
+  now: string
+): PriceCandidate[] {
+  return drafts
+    .filter((draft) => draft.originalUrl.trim())
+    .map((draft) => {
+      const merchant = merchants.find((entry) => entry.merchantId === draft.merchantId);
+      if (!merchant) {
+        throw new Error("比較候補のECを選択してください。");
+      }
+
+      try {
+        const parsedUrl = new URL(draft.originalUrl);
+        if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+          throw new Error("unsupported protocol");
+        }
+      } catch {
+        throw new Error("比較候補のURL形式を確認してください。");
+      }
+
+      const breakdown = {
+        productPrice: parseOptionalAmount(draft.productPrice),
+        shippingFee: parseOptionalAmount(draft.shippingFee),
+        couponDiscount: parseOptionalAmount(draft.couponDiscount),
+        grantedPoints: parseOptionalAmount(draft.grantedPoints),
+        pointRate: parseOptionalAmount(draft.pointRate)
+      };
+
+      return {
+        merchantId: draft.merchantId,
+        originalUrl: draft.originalUrl,
+        affiliateUrl: buildAffiliateUrl(draft.originalUrl, merchant.affiliate),
+        breakdown,
+        priceMemo: draft.priceMemo.trim() || null,
+        lastCheckedAt: breakdown.productPrice === null ? null : now,
+        imageSource: "placeholder"
+      };
+    });
+}
+
 export function WishlistForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,6 +121,7 @@ export function WishlistForm() {
   const [referenceLinks, setReferenceLinks] = useState<ReferenceLinkDraft[]>([
     { id: crypto.randomUUID(), kind: "kakaku", label: "価格比較メモ", url: "" }
   ]);
+  const [candidateDrafts, setCandidateDrafts] = useState<CandidateDraft[]>([]);
   const [targetSaleEventId, setTargetSaleEventId] = useState(searchParams.get("saleId") ?? "");
   const [note, setNote] = useState("");
   const [asin, setAsin] = useState<string | null>(null);
@@ -138,6 +207,19 @@ export function WishlistForm() {
       const userId = await getAnonymousUserId();
       const affiliateUrl = buildAffiliateUrl(productUrl, selectedMerchant.affiliate);
       const now = new Date().toISOString();
+      const additionalCandidates = parseCandidateDrafts(candidateDrafts, merchants, now);
+      const candidates: PriceCandidate[] = [
+        {
+          merchantId,
+          originalUrl: productUrl,
+          affiliateUrl,
+          breakdown,
+          priceMemo: actualPriceMemo.trim() || null,
+          lastCheckedAt: breakdown.productPrice === null ? null : now,
+          imageSource: "placeholder"
+        },
+        ...additionalCandidates
+      ];
 
       await repositories.wishlist.create(userId, {
         title: title.trim(),
@@ -148,19 +230,9 @@ export function WishlistForm() {
         targetSaleEventId: targetSaleEventId || null,
         placeholderKey: selectedMerchant.placeholderKey,
         note: note.trim() || null,
-        candidates: [
-          {
-            merchantId,
-            originalUrl: productUrl,
-            affiliateUrl,
-            breakdown,
-            priceMemo: actualPriceMemo.trim() || null,
-            lastCheckedAt: breakdown.productPrice === null ? null : now,
-            imageSource: "placeholder"
-          }
-        ],
+        candidates,
         referenceLinks: parsedReferenceLinks,
-        lastCheckedAt: breakdown.productPrice === null ? null : now
+        lastCheckedAt: candidates.some((candidate) => candidate.lastCheckedAt) ? now : null
       });
       setToast("欲しいものを保存しました。");
       setTimeout(() => router.push("/wishlist"), 700);
@@ -239,6 +311,72 @@ export function WishlistForm() {
             <div>
               <label className="text-sm font-semibold" htmlFor="actualPriceMemo">実質価格メモ</label>
               <textarea id="actualPriceMemo" className="mt-2 min-h-24 w-full rounded-md border border-line px-3 py-2" value={actualPriceMemo} onChange={(event) => setActualPriceMemo(event.target.value)} />
+            </div>
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">比較候補</p>
+                  <p className="mt-1 text-xs leading-5 text-muted">別ECのURLと手入力の内訳を保存できます。価格や画像は取得しません。</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="min-h-8 shrink-0 px-3 py-1"
+                  onClick={() => setCandidateDrafts((current) => [...current, createCandidateDraft(merchants[0]?.merchantId ?? merchantId)])}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  比較候補を追加
+                </Button>
+              </div>
+              {candidateDrafts.length ? (
+                <div className="mt-3 space-y-3">
+                  {candidateDrafts.map((candidate, index) => (
+                    <div key={candidate.id} data-testid="candidate-draft" className="rounded-lg border border-line bg-white p-3">
+                      <div className="grid gap-3 md:grid-cols-[140px_1fr_auto]">
+                        <select
+                          aria-label="候補EC"
+                          className="rounded-md border border-line px-3 py-2 text-sm"
+                          value={candidate.merchantId}
+                          onChange={(event) => setCandidateDrafts((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, merchantId: event.target.value } : entry))}
+                        >
+                          {merchants.map((merchant) => <option key={merchant.merchantId} value={merchant.merchantId}>{merchant.name}</option>)}
+                        </select>
+                        <input
+                          aria-label="候補URL"
+                          type="url"
+                          className="rounded-md border border-line px-3 py-2 text-sm"
+                          value={candidate.originalUrl}
+                          onChange={(event) => setCandidateDrafts((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, originalUrl: event.target.value } : entry))}
+                          placeholder="https://..."
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="min-h-9 px-2"
+                          onClick={() => setCandidateDrafts((current) => current.filter((_, currentIndex) => currentIndex !== index))}
+                          aria-label="比較候補を削除"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="mt-3 grid gap-3 md:grid-cols-5">
+                        <input aria-label="候補商品価格" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.productPrice} onChange={(event) => setCandidateDrafts((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, productPrice: event.target.value } : entry))} placeholder="商品価格" />
+                        <input aria-label="候補送料" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.shippingFee} onChange={(event) => setCandidateDrafts((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, shippingFee: event.target.value } : entry))} placeholder="送料" />
+                        <input aria-label="候補クーポン値引き" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.couponDiscount} onChange={(event) => setCandidateDrafts((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, couponDiscount: event.target.value } : entry))} placeholder="クーポン" />
+                        <input aria-label="候補付与ポイント" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.grantedPoints} onChange={(event) => setCandidateDrafts((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, grantedPoints: event.target.value } : entry))} placeholder="付与pt" />
+                        <input aria-label="候補ポイント換算率" type="number" min="0" step="0.1" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.pointRate} onChange={(event) => setCandidateDrafts((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, pointRate: event.target.value } : entry))} placeholder="換算率" />
+                      </div>
+                      <textarea
+                        aria-label="候補メモ"
+                        className="mt-3 min-h-16 w-full rounded-md border border-line px-3 py-2 text-sm"
+                        value={candidate.priceMemo}
+                        onChange={(event) => setCandidateDrafts((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, priceMemo: event.target.value } : entry))}
+                        placeholder="候補ごとのメモ"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
             <div>
               <div className="flex items-center justify-between gap-3">
