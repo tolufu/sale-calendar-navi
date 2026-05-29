@@ -66,7 +66,8 @@ export type Offer = {
   effectivePrice?: number | null;
   checkedAt?: string | null;
   sourceType?: "manual" | "affiliate" | "imported";
-  imageSource?: "placeholder";
+  imageSource?: "placeholder" | "rakuten_api";
+  imageUrl?: string | null;
   priceMemo: string | null;
   updatedAt: string;
 };
@@ -78,7 +79,8 @@ export type PriceCandidate = {
   breakdown: PriceBreakdown;
   priceMemo: string | null;
   lastCheckedAt: string | null;
-  imageSource: "placeholder";
+  imageSource: "placeholder" | "rakuten_api";
+  imageUrl?: string | null;
 };
 
 export const WISH_ITEM_SCHEMA_VERSION = 2;

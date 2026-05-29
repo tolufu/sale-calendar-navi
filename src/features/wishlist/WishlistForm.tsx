@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, LinkIcon, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, LinkIcon, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +11,7 @@ import { Toast } from "@/components/ui/Toast";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
 import type { Merchant, PriceCandidate, SaleEvent } from "@/lib/repositories/types";
+import type { ProductSearchCandidate } from "@/lib/product-search/types";
 import { buildAffiliateUrl } from "@/lib/utils/affiliate";
 import { detectMerchantIdFromUrl, extractAmazonAsin } from "@/lib/utils/merchant";
 import { calculateEffectivePrice, formatPrice } from "@/lib/utils/price";
@@ -118,6 +119,13 @@ export function WishlistForm() {
   const [couponDiscount, setCouponDiscount] = useState("");
   const [grantedPoints, setGrantedPoints] = useState("");
   const [pointRate, setPointRate] = useState("1");
+  const [primaryAffiliateUrl, setPrimaryAffiliateUrl] = useState<string | null>(null);
+  const [primaryImageUrl, setPrimaryImageUrl] = useState<string | null>(null);
+  const [primaryImageSource, setPrimaryImageSource] = useState<"placeholder" | "rakuten_api">("placeholder");
+  const [rakutenQuery, setRakutenQuery] = useState("");
+  const [rakutenCandidates, setRakutenCandidates] = useState<ProductSearchCandidate[]>([]);
+  const [rakutenSearchMessage, setRakutenSearchMessage] = useState<string | null>(null);
+  const [rakutenSearching, setRakutenSearching] = useState(false);
   const [referenceLinks, setReferenceLinks] = useState<ReferenceLinkDraft[]>([
     { id: crypto.randomUUID(), kind: "kakaku", label: "価格比較メモ", url: "" }
   ]);
@@ -173,6 +181,48 @@ export function WishlistForm() {
     setAsin(extractAmazonAsin(productUrl));
   }, [merchants, productUrl]);
 
+  async function searchRakutenCandidates() {
+    const query = rakutenQuery.trim() || productUrl.trim() || title.trim();
+    if (!query) {
+      setRakutenSearchMessage("楽天URLまたはキーワードを入力してください。");
+      return;
+    }
+
+    setRakutenSearching(true);
+    setRakutenSearchMessage(null);
+    try {
+      const response = await fetch(`/api/products/rakuten/search?q=${encodeURIComponent(query)}`);
+      if (!response.ok) {
+        throw new Error("楽天商品候補を取得できませんでした。");
+      }
+      const result = (await response.json()) as {
+        candidates: ProductSearchCandidate[];
+        message: string | null;
+      };
+      setRakutenCandidates(result.candidates);
+      setRakutenSearchMessage(result.message);
+    } catch (searchError) {
+      setRakutenSearchMessage(searchError instanceof Error ? searchError.message : "楽天商品候補を取得できませんでした。");
+      setRakutenCandidates([]);
+    } finally {
+      setRakutenSearching(false);
+    }
+  }
+
+  function applyRakutenCandidate(candidate: ProductSearchCandidate) {
+    setTitle(candidate.title);
+    setProductUrl(candidate.itemUrl);
+    setMerchantId("rakuten");
+    setPrimaryAffiliateUrl(candidate.affiliateUrl);
+    setPrimaryImageUrl(candidate.imageUrl);
+    setPrimaryImageSource(candidate.imageSource);
+    if (candidate.price !== null) {
+      setProductPrice(String(candidate.price));
+      setExpanded(true);
+    }
+    setToast("楽天候補を入力欄に反映しました。保存前に内容を確認してください。");
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -205,7 +255,7 @@ export function WishlistForm() {
       const parsedReferenceLinks = parseReferenceLinks(referenceLinks);
       const repositories = getRepositories();
       const userId = await getAnonymousUserId();
-      const affiliateUrl = buildAffiliateUrl(productUrl, selectedMerchant.affiliate);
+      const affiliateUrl = primaryAffiliateUrl ?? buildAffiliateUrl(productUrl, selectedMerchant.affiliate);
       const now = new Date().toISOString();
       const additionalCandidates = parseCandidateDrafts(candidateDrafts, merchants, now);
       const candidates: PriceCandidate[] = [
@@ -216,7 +266,8 @@ export function WishlistForm() {
           breakdown,
           priceMemo: actualPriceMemo.trim() || null,
           lastCheckedAt: breakdown.productPrice === null ? null : now,
-          imageSource: "placeholder"
+          imageSource: primaryImageSource,
+          imageUrl: primaryImageSource === "rakuten_api" ? primaryImageUrl : null
         },
         ...additionalCandidates
       ];
@@ -258,8 +309,69 @@ export function WishlistForm() {
         </div>
         <div>
           <label className="text-sm font-semibold" htmlFor="productUrl">商品URL</label>
-          <input id="productUrl" type="url" className="mt-2 w-full rounded-md border border-line px-3 py-2" value={productUrl} onChange={(event) => setProductUrl(event.target.value)} required />
+          <input
+            id="productUrl"
+            type="url"
+            className="mt-2 w-full rounded-md border border-line px-3 py-2"
+            value={productUrl}
+            onChange={(event) => {
+              setProductUrl(event.target.value);
+              setPrimaryAffiliateUrl(null);
+              setPrimaryImageUrl(null);
+              setPrimaryImageSource("placeholder");
+            }}
+            required
+          />
           {asin ? <p className="mt-2 text-xs text-muted">検出したASIN: {asin}</p> : null}
+        </div>
+        <div className="rounded-lg border border-line bg-surface p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <div className="flex-1">
+              <label className="text-sm font-semibold" htmlFor="rakutenSearch">楽天商品補完</label>
+              <input
+                id="rakutenSearch"
+                className="mt-2 w-full rounded-md border border-line px-3 py-2"
+                value={rakutenQuery}
+                onChange={(event) => setRakutenQuery(event.target.value)}
+                placeholder="楽天URLまたはキーワード"
+              />
+              <p className="mt-1 text-xs leading-5 text-muted">
+                サーバー経由で楽天APIを呼び出します。API未設定時はモック候補または手入力で続けられます。
+              </p>
+            </div>
+            <Button type="button" variant="secondary" onClick={() => void searchRakutenCandidates()} disabled={rakutenSearching}>
+              <Search className="mr-2 h-4 w-4" />
+              {rakutenSearching ? "検索中" : "候補検索"}
+            </Button>
+          </div>
+          {rakutenSearchMessage ? <p className="mt-3 text-xs leading-5 text-muted">{rakutenSearchMessage}</p> : null}
+          {rakutenCandidates.length ? (
+            <div className="mt-3 grid gap-3">
+              {rakutenCandidates.map((candidate) => (
+                <div key={candidate.itemCode} className="grid gap-3 rounded-lg border border-line bg-white p-3 sm:grid-cols-[72px_1fr_auto]">
+                  {candidate.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- 楽天APIが返した許可済み画像URLだけを候補確認用に表示する。
+                    <img src={candidate.imageUrl} alt="" className="h-[72px] w-[72px] rounded-md border border-line object-cover" />
+                  ) : (
+                    <div className="h-[72px] w-[72px] rounded-md border border-dashed border-line bg-surface" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="line-clamp-2 text-sm font-semibold text-ink">{candidate.title}</p>
+                    <p className="mt-1 text-xs text-muted">
+                      {candidate.price === null ? "価格候補なし" : formatPrice(candidate.price)}
+                      {candidate.shopName ? ` / ${candidate.shopName}` : ""}
+                    </p>
+                    <p className="mt-1 text-xs text-muted" title={candidate.imageSource === "rakuten_api" ? "楽天APIから返された画像URLのみ保存します。" : "API未設定または画像なしのためプレースホルダーを使います。"}>
+                      画像出典: {candidate.imageSource === "rakuten_api" ? "楽天API" : "プレースホルダー"}
+                    </p>
+                  </div>
+                  <Button type="button" className="self-center" onClick={() => applyRakutenCandidate(candidate)}>
+                    反映
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>

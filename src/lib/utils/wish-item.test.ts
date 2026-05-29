@@ -122,4 +122,27 @@ describe("syncWishItemMirrors", () => {
     expect(synced.actualPriceMemo).toBe("更新メモ");
     expect(synced.referenceLinks).toHaveLength(1);
   });
+
+  it("楽天API由来の画像URLとimageSourceを保存する", () => {
+    const synced = syncWishItemMirrors({
+      ...baseV1Item,
+      candidates: [
+        {
+          merchantId: "rakuten",
+          originalUrl: "https://item.rakuten.co.jp/shop/item",
+          affiliateUrl: "https://hb.afl.rakuten.co.jp/hgc/example",
+          breakdown: { productPrice: 10000, shippingFee: null, couponDiscount: null, grantedPoints: null, pointRate: null },
+          priceMemo: null,
+          lastCheckedAt: "2026-05-03T00:00:00.000Z",
+          imageSource: "rakuten_api",
+          imageUrl: "https://thumbnail.image.rakuten.co.jp/@0_mall/shop/item.jpg"
+        }
+      ]
+    });
+
+    expect(synced.candidates?.[0]).toMatchObject({
+      imageSource: "rakuten_api",
+      imageUrl: "https://thumbnail.image.rakuten.co.jp/@0_mall/shop/item.jpg"
+    });
+  });
 });

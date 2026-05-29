@@ -31,6 +31,8 @@ export function normalizePriceBreakdown(value: Partial<PriceBreakdown> | null | 
 }
 
 function normalizeCandidate(candidate: Partial<PriceCandidate>, fallback: WishItem | WishItemInput): PriceCandidate {
+  const imageSource = candidate.imageSource === "rakuten_api" && candidate.imageUrl ? "rakuten_api" : "placeholder";
+
   return {
     merchantId: candidate.merchantId || fallback.merchantId,
     originalUrl: candidate.originalUrl || fallback.productUrl,
@@ -38,7 +40,8 @@ function normalizeCandidate(candidate: Partial<PriceCandidate>, fallback: WishIt
     breakdown: normalizePriceBreakdown(candidate.breakdown),
     priceMemo: candidate.priceMemo ?? fallback.actualPriceMemo ?? null,
     lastCheckedAt: candidate.lastCheckedAt ?? null,
-    imageSource: "placeholder"
+    imageSource,
+    imageUrl: imageSource === "rakuten_api" ? candidate.imageUrl ?? null : null
   };
 }
 

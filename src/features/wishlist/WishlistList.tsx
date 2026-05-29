@@ -14,6 +14,7 @@ import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
 import type { Merchant, PriceCandidate, SaleEvent, WishItem } from "@/lib/repositories/types";
 import { buildAffiliateUrl } from "@/lib/utils/affiliate";
+import { calculateBuyTimingScore, type SaleImportance } from "@/lib/utils/buy-timing-score";
 import { formatPrice, pickCandidateEffectivePrice, pickEffectivePriceDiff } from "@/lib/utils/price";
 import { buildCompareShareText, buildXIntentUrl } from "@/lib/utils/share";
 
@@ -50,6 +51,9 @@ type CandidateEditDraft = {
   id: string;
   merchantId: string;
   originalUrl: string;
+  affiliateUrl: string | null;
+  imageSource: "placeholder" | "rakuten_api";
+  imageUrl: string | null;
   productPrice: string;
   shippingFee: string;
   couponDiscount: string;
@@ -63,6 +67,9 @@ function toCandidateDraft(candidate: PriceCandidate): CandidateEditDraft {
     id: crypto.randomUUID(),
     merchantId: candidate.merchantId,
     originalUrl: candidate.originalUrl,
+    affiliateUrl: candidate.affiliateUrl,
+    imageSource: candidate.imageSource,
+    imageUrl: candidate.imageUrl ?? null,
     productPrice: candidate.breakdown.productPrice?.toString() ?? "",
     shippingFee: candidate.breakdown.shippingFee?.toString() ?? "",
     couponDiscount: candidate.breakdown.couponDiscount?.toString() ?? "",
@@ -77,6 +84,9 @@ function createCandidateDraft(merchantId: string): CandidateEditDraft {
     id: crypto.randomUUID(),
     merchantId,
     originalUrl: "",
+    affiliateUrl: null,
+    imageSource: "placeholder",
+    imageUrl: null,
     productPrice: "",
     shippingFee: "",
     couponDiscount: "",
@@ -115,11 +125,12 @@ function parseCandidateDrafts(drafts: CandidateEditDraft[], merchants: Merchant[
       return {
         merchantId: draft.merchantId,
         originalUrl: draft.originalUrl,
-        affiliateUrl: buildAffiliateUrl(draft.originalUrl, merchant.affiliate),
+        affiliateUrl: draft.affiliateUrl ?? buildAffiliateUrl(draft.originalUrl, merchant.affiliate),
         breakdown,
         priceMemo: draft.priceMemo.trim() || null,
         lastCheckedAt: breakdown.productPrice === null ? null : now,
-        imageSource: "placeholder"
+        imageSource: draft.imageSource,
+        imageUrl: draft.imageSource === "rakuten_api" ? draft.imageUrl : null
       };
     });
 }
@@ -148,6 +159,22 @@ function desiredPriceStatus(item: WishItem, effectivePrice: number | null): stri
     return "希望価格内";
   }
   return `希望価格まで ${formatPrice(effectivePrice - item.desiredPrice)}`;
+}
+
+function saleImportance(sale: SaleEvent | undefined): SaleImportance {
+  if (!sale) {
+    return "low";
+  }
+  const now = Date.now();
+  const start = new Date(sale.startAt).getTime();
+  const end = new Date(sale.endAt).getTime();
+  if (now >= start && now <= end) {
+    return "high";
+  }
+  if (now < start) {
+    return "medium";
+  }
+  return "low";
 }
 
 export function WishlistList() {
@@ -309,10 +336,25 @@ export function WishlistList() {
         const relatedSale = sales.find((sale) => sale.id === item.targetSaleEventId);
         const saleStatus = getSaleStatus(relatedSale);
         const priceStatus = desiredPriceStatus(item, primaryEffectivePrice);
+        const buyTimingScore = calculateBuyTimingScore({
+          desiredPrice: item.desiredPrice,
+          currentEffectivePrice: primaryEffectivePrice,
+          saleImportance: saleImportance(relatedSale),
+          previousEffectivePrice: item.candidates?.[1] ? pickCandidateEffectivePrice(item.candidates[1]) : null,
+          checkedAt: item.lastCheckedAt ?? null
+        });
         const linkLabel = item.merchantId === "rakuten" ? "楽天で見る" : "外部リンク";
         return (
           <Card key={item.id} className="grid grid-cols-[96px_1fr] gap-4 md:grid-cols-[128px_1fr]">
-            <Image src={imagePath(item.placeholderKey)} alt="" width={96} height={96} className="rounded-lg border border-line bg-surface" />
+            {primaryCandidate?.imageSource === "rakuten_api" && primaryCandidate.imageUrl ? (
+              <div>
+                {/* eslint-disable-next-line @next/next/no-img-element -- 楽天APIが返した許可済み画像URLだけを保存済み候補として表示する。 */}
+                <img src={primaryCandidate.imageUrl} alt="" className="h-24 w-24 rounded-lg border border-line object-cover md:h-32 md:w-32" />
+                <p className="mt-1 text-[11px] text-muted" title="楽天APIから返された画像URLのみ表示しています。">画像: 楽天API</p>
+              </div>
+            ) : (
+              <Image src={imagePath(item.placeholderKey)} alt="" width={96} height={96} className="rounded-lg border border-line bg-surface" />
+            )}
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -390,6 +432,14 @@ export function WishlistList() {
                 <>
                   <p className="mt-3 text-sm text-muted">希望価格: {formatPrice(item.desiredPrice)}</p>
                   <p className="mt-1 text-sm text-muted">計算済み実質価格: {primaryEffectivePrice === null ? "未計算" : formatPrice(primaryEffectivePrice)}</p>
+                  <div className="mt-2 rounded-md border border-line bg-surface px-3 py-2">
+                    {buyTimingScore.status === "scored" ? (
+                      <p className="text-sm font-semibold text-ink">買い時スコア: {buyTimingScore.score} / 100（{buyTimingScore.label}）</p>
+                    ) : (
+                      <p className="text-sm font-semibold text-ink">{buyTimingScore.label}</p>
+                    )}
+                    <p className="mt-1 text-xs leading-5 text-muted">{buyTimingScore.reasons[0]}</p>
+                  </div>
                   <p className="mt-1 text-sm text-muted">最終確認日: {item.lastCheckedAt ? new Date(item.lastCheckedAt).toLocaleDateString("ja-JP") : "未確認"}</p>
                   {relatedSale ? <p className="mt-1 text-sm text-muted">関連セール: {relatedSale.title}（{new Date(relatedSale.startAt).toLocaleDateString("ja-JP")}）</p> : null}
                   {item.actualPriceMemo ? <p className="mt-2 text-sm leading-6 text-muted">前回メモ: {item.actualPriceMemo}</p> : null}

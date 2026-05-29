@@ -32,6 +32,8 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
 NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID=
+RAKUTEN_APPLICATION_ID=
+RAKUTEN_AFFILIATE_ID=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
@@ -63,9 +65,22 @@ npm run build
 
 詳細入力から価格比較メモ、公式、その他の参考URLを複数保存できます。参考リンクは開くためのURL保存だけを行い、価格、在庫、画像、レビューの取得や転載は行いません。
 
+## v2 楽天商品補完
+
+欲しいもの登録画面では、楽天URLまたはキーワードから楽天商品候補を検索できます。楽天APIキーはブラウザへ出さず、`/api/products/rakuten/search` のサーバー側ルートでのみ利用します。
+
+- `RAKUTEN_APPLICATION_ID`: 楽天商品検索APIのアプリID
+- `RAKUTEN_AFFILIATE_ID`: 任意。設定時は楽天APIレスポンスの `affiliateUrl` を候補として保存
+
+`RAKUTEN_APPLICATION_ID` が未設定の場合、画面は壊れず、モック候補または手入力のまま保存できます。モック候補では価格・画像を補完しません。
+
+## 買い時スコア
+
+欲しいもの一覧では、希望価格、候補の実質価格、関連セール、前回候補、確認日から0〜100点の目安を表示します。データが足りない場合は「データ不足」と表示し、「必ず安い」などの断定はしません。
+
 ## 画像方針
 
-v1〜v1.2 の商品画像は `public/images/placeholders/` に置いた自作プレースホルダーのみを使います。外部ECの商品画像取得・保存・表示は行いません。
+v1〜v1.2 の商品画像は `public/images/placeholders/` に置いた自作プレースホルダーのみを使います。v2では、楽天APIから返された画像URLに限り `imageSource = "rakuten_api"` として保存・表示できます。API未設定時や画像がない候補ではプレースホルダー表示のままです。スクレイピングや外部商品画像の無断取得・転載は行いません。
 
 ## 禁止事項
 
