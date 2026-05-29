@@ -16,11 +16,11 @@
 
 ## 1. 現状実装サマリ（2026-05-29 時点）
 
-`npm run lint` / `npm run test` / `npm run build` はいずれも成功（lint:0 warn / test:4 pass / build:11 routes）。
+`npm run lint` / `npm run test` / `npm run build` はいずれも成功（lint:0 warn / test:9 tests / 6 files / build:11 routes）。
 
 | 領域 | 状態 | 備考 |
 | --- | --- | --- |
-| ルーティング・共通レイアウト | ✅ 実装済 | `SiteHeader` / `SiteFooter`、全9ルート存在 |
+| ルーティング・共通レイアウト | ✅ 実装済 | `SiteHeader` / `SiteFooter`、全11ルート存在 |
 | 状態UI共通化 | ✅ 実装済 | `Skeleton`/`EmptyState`/`ErrorState`/`RetryButton`/`Toast` |
 | merchants マスタ | ✅ 実装済 | `src/data/merchants.ts`（amazon/rakuten）、enum不使用 |
 | リポジトリ抽象＋ローカル実装 | ✅ 実装済 | `types.ts` interface群、`local-storage.ts` 全CRUD |

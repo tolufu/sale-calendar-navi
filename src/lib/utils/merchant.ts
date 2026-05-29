@@ -1,5 +1,14 @@
 import type { Merchant } from "@/lib/repositories/types";
 
+const merchantToneClasses: Record<string, string> = {
+  amazon: "border-amazon bg-blue-50 text-amazon",
+  rakuten: "border-rakuten bg-red-50 text-rakuten"
+};
+
+export function getMerchantToneClass(merchant: Pick<Merchant, "colorToken"> | null | undefined): string {
+  return merchantToneClasses[merchant?.colorToken ?? ""] ?? "border-line bg-surface text-muted";
+}
+
 export function detectMerchantIdFromUrl(url: string, merchants: Merchant[]): string | null {
   try {
     const hostname = new URL(url).hostname.replace(/^www\./, "").toLowerCase();

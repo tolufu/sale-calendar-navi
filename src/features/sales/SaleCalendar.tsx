@@ -13,12 +13,9 @@ import { getRepositories } from "@/lib/repositories";
 import type { Merchant, SaleEvent } from "@/lib/repositories/types";
 import { buildCalendarDays, sortSalesForDisplay } from "@/lib/utils/calendar";
 import { formatDate, formatDateTime } from "@/lib/utils/date";
+import { getMerchantToneClass } from "@/lib/utils/merchant";
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-
-function merchantClass(merchantId: string): string {
-  return merchantId === "rakuten" ? "border-rakuten bg-red-50 text-rakuten" : "border-amazon bg-blue-50 text-amazon";
-}
 
 export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: string }) {
   const [month, setMonth] = useState(() => new Date(2026, 5, 1));
@@ -61,6 +58,7 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
     [activeMerchantIds, events, merchants]
   );
   const days = useMemo(() => buildCalendarDays(month, filteredEvents), [filteredEvents, month]);
+  const merchantById = useMemo(() => new Map(merchants.map((merchant) => [merchant.merchantId, merchant])), [merchants]);
 
   function toggleMerchant(merchantId: string) {
     setActiveMerchantIds((current) =>
@@ -123,7 +121,7 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
                 <Card className="hover:bg-surface">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge>{merchant?.name ?? event.merchantId}</Badge>
-                    <Badge className={merchantClass(event.merchantId)}>{event.saleType}</Badge>
+                    <Badge className={getMerchantToneClass(merchant)}>{event.saleType}</Badge>
                   </div>
                   <h2 className="mt-3 text-lg font-bold">{event.title}</h2>
                   <p className="mt-2 text-sm text-muted">{formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}</p>
@@ -154,7 +152,7 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
                       <Link
                         key={event.id}
                         href={`/sales/${event.id}`}
-                        className={`block rounded-md border px-2 py-1 text-[11px] font-semibold leading-4 ${merchantClass(event.merchantId)}`}
+                        className={`block rounded-md border px-2 py-1 text-[11px] font-semibold leading-4 ${getMerchantToneClass(merchantById.get(event.merchantId))}`}
                         onClick={(clickEvent) => clickEvent.stopPropagation()}
                       >
                         {event.title}
@@ -170,7 +168,7 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
       )}
 
       {selectedDayEvents ? (
-        <div className="fixed inset-0 z-40 flex items-end bg-black/30 p-0 md:items-center md:justify-center md:p-6">
+        <div className="fixed inset-0 z-50 flex items-end bg-black/30 p-0 md:items-center md:justify-center md:p-6">
           <div className="max-h-[80vh] w-full overflow-auto rounded-t-2xl bg-white p-5 shadow-soft md:max-w-lg md:rounded-lg">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">{formatDate(selectedDayEvents[0].startAt)} の予定</h2>

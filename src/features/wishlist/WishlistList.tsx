@@ -25,7 +25,7 @@ export function WishlistList() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant?: "success" | "error" } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDesiredPrice, setDraftDesiredPrice] = useState("");
@@ -61,32 +61,51 @@ export function WishlistList() {
 
   async function saveEdit(item: WishItem) {
     if (!userId) return;
-    await getRepositories().wishlist.update(userId, item.id, {
-      title: draftTitle.trim() || item.title,
-      desiredPrice: draftDesiredPrice ? Number(draftDesiredPrice) : null,
-      actualPriceMemo: draftActualPriceMemo.trim() || null
-    });
-    setEditingId(null);
-    setToast("欲しいものを更新しました。");
-    await load();
+    try {
+      await getRepositories().wishlist.update(userId, item.id, {
+        title: draftTitle.trim() || item.title,
+        desiredPrice: draftDesiredPrice ? Number(draftDesiredPrice) : null,
+        actualPriceMemo: draftActualPriceMemo.trim() || null
+      });
+      setEditingId(null);
+      setToast({ message: "欲しいものを更新しました。" });
+      await load();
+    } catch (saveError) {
+      setToast({
+        message: saveError instanceof Error ? saveError.message : "欲しいものを更新できませんでした。",
+        variant: "error"
+      });
+    }
   }
 
   async function remove(item: WishItem) {
     if (!userId) {
       return;
     }
-    const repositories = getRepositories();
-    await repositories.wishlist.remove(userId, item.id);
-    await repositories.history.create(userId, {
-      type: "deletedWish",
-      title: item.title,
-      href: null,
-      merchantId: item.merchantId,
-      occurredAt: new Date().toISOString(),
-      memo: "欲しいもの一覧から削除"
-    });
-    setToast("欲しいものを削除しました。");
-    await load();
+    const confirmed = window.confirm(`「${item.title}」を欲しいもの一覧から削除します。よろしいですか？`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const repositories = getRepositories();
+      await repositories.wishlist.remove(userId, item.id);
+      await repositories.history.create(userId, {
+        type: "deletedWish",
+        title: item.title,
+        href: null,
+        merchantId: item.merchantId,
+        occurredAt: new Date().toISOString(),
+        memo: "欲しいもの一覧から削除"
+      });
+      setToast({ message: "欲しいものを削除しました。" });
+      await load();
+    } catch (removeError) {
+      setToast({
+        message: removeError instanceof Error ? removeError.message : "欲しいものを削除できませんでした。",
+        variant: "error"
+      });
+    }
   }
 
   if (loading) {
@@ -178,7 +197,7 @@ export function WishlistList() {
           </Card>
         );
       })}
-      {toast ? <Toast message={toast} onClose={() => setToast(null)} /> : null}
+      {toast ? <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} /> : null}
     </div>
   );
 }
