@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="商品プレースホルダー">
+  <rect width="240" height="240" rx="18" fill="#e9f1f8"/>
+  <path d="M54 86h132l-16 92H70L54 86Z" fill="#4d77a3"/>
+  <path d="M78 86c8-23 23-34 43-34s35 11 43 34" fill="none" stroke="#202124" stroke-width="10" stroke-linecap="round"/>
+  <rect x="78" y="116" width="84" height="12" rx="6" fill="#ffffff" opacity=".9"/>
+  <rect x="78" y="142" width="58" height="10" rx="5" fill="#ffffff" opacity=".75"/>
+</svg>
