@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,16 +20,17 @@ function merchantClass(merchantId: string): string {
   return merchantId === "rakuten" ? "border-rakuten bg-red-50 text-rakuten" : "border-amazon bg-blue-50 text-amazon";
 }
 
-export function SaleCalendar() {
+export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: string }) {
   const [month, setMonth] = useState(() => new Date(2026, 5, 1));
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [events, setEvents] = useState<SaleEvent[]>([]);
   const [activeMerchantIds, setActiveMerchantIds] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"month" | "list">("month");
   const [selectedDayEvents, setSelectedDayEvents] = useState<SaleEvent[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function load() {
+  const load = useCallback(async function load() {
     setLoading(true);
     setError(null);
     try {
@@ -37,17 +38,23 @@ export function SaleCalendar() {
       const [merchantItems, saleItems] = await Promise.all([repositories.merchants.list(), repositories.sales.list()]);
       setMerchants(merchantItems);
       setEvents(saleItems);
-      setActiveMerchantIds((current) => (current.length ? current : merchantItems.map((merchant) => merchant.merchantId)));
+      setActiveMerchantIds((current) => {
+        if (current.length) return current;
+        if (initialMerchantSlug && merchantItems.some((merchant) => merchant.merchantId === initialMerchantSlug)) {
+          return [initialMerchantSlug];
+        }
+        return merchantItems.map((merchant) => merchant.merchantId);
+      });
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "予定を読み込めませんでした。");
     } finally {
       setLoading(false);
     }
-  }
+  }, [initialMerchantSlug]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const filteredEvents = useMemo(
     () => sortSalesForDisplay(events.filter((event) => activeMerchantIds.includes(event.merchantId)), merchants),
@@ -59,6 +66,10 @@ export function SaleCalendar() {
     setActiveMerchantIds((current) =>
       current.includes(merchantId) ? current.filter((id) => id !== merchantId) : [...current, merchantId]
     );
+  }
+
+  function showAllMerchants() {
+    setActiveMerchantIds(merchants.map((merchant) => merchant.merchantId));
   }
 
   if (loading) {
@@ -82,6 +93,9 @@ export function SaleCalendar() {
           </Button>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant={activeMerchantIds.length === merchants.length ? "primary" : "secondary"} onClick={showAllMerchants}>
+            すべて
+          </Button>
           {merchants.map((merchant) => (
             <Button
               key={merchant.merchantId}
@@ -92,10 +106,32 @@ export function SaleCalendar() {
             </Button>
           ))}
         </div>
+        <div className="flex rounded-lg border border-line bg-surface p-1">
+          <Button variant={viewMode === "month" ? "primary" : "ghost"} onClick={() => setViewMode("month")}>月表示</Button>
+          <Button variant={viewMode === "list" ? "primary" : "ghost"} onClick={() => setViewMode("list")}>リスト</Button>
+        </div>
       </Card>
 
       {filteredEvents.length === 0 ? (
         <EmptyState title="表示するセール予定がありません" description="ECフィルターを変更するか、別の月を確認してください。" />
+      ) : viewMode === "list" ? (
+        <div className="grid gap-3">
+          {filteredEvents.map((event) => {
+            const merchant = merchants.find((entry) => entry.merchantId === event.merchantId);
+            return (
+              <Link key={event.id} href={`/sales/${event.id}`} className="block">
+                <Card className="hover:bg-surface">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge>{merchant?.name ?? event.merchantId}</Badge>
+                    <Badge className={merchantClass(event.merchantId)}>{event.saleType}</Badge>
+                  </div>
+                  <h2 className="mt-3 text-lg font-bold">{event.title}</h2>
+                  <p className="mt-2 text-sm text-muted">{formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}</p>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-line bg-white">
           <div className="grid grid-cols-7 border-b border-line bg-surface text-center text-xs font-semibold text-muted">
@@ -115,9 +151,14 @@ export function SaleCalendar() {
                   <span className={day.inMonth ? "text-sm font-semibold text-ink" : "text-sm text-zinc-400"}>{day.date.getDate()}</span>
                   <div className="mt-2 space-y-1">
                     {visibleEvents.map((event) => (
-                      <span key={event.id} className={`block rounded-md border px-2 py-1 text-[11px] font-semibold leading-4 ${merchantClass(event.merchantId)}`}>
+                      <Link
+                        key={event.id}
+                        href={`/sales/${event.id}`}
+                        className={`block rounded-md border px-2 py-1 text-[11px] font-semibold leading-4 ${merchantClass(event.merchantId)}`}
+                        onClick={(clickEvent) => clickEvent.stopPropagation()}
+                      >
                         {event.title}
-                      </span>
+                      </Link>
                     ))}
                     {hiddenCount > 0 ? <Badge className="bg-ink text-white">+{hiddenCount}</Badge> : null}
                   </div>

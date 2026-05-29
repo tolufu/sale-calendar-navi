@@ -23,3 +23,21 @@ export function toDateKey(date: string | Date): string {
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+export type SaleStatus = "upcoming" | "active" | "ended";
+
+export function getSaleStatus(startAt: string | Date, endAt: string | Date, now: Date = new Date()): SaleStatus {
+  const start = new Date(startAt).getTime();
+  const end = new Date(endAt).getTime();
+  const current = now.getTime();
+
+  if (current < start) return "upcoming";
+  if (current > end) return "ended";
+  return "active";
+}
+
+export function formatSaleStatus(status: SaleStatus): string {
+  if (status === "active") return "開催中";
+  if (status === "upcoming") return "開催予定";
+  return "終了";
+}

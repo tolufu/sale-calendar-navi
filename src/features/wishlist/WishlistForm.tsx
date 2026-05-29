@@ -12,6 +12,7 @@ import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
 import type { Merchant, SaleEvent } from "@/lib/repositories/types";
 import { convertRakutenAffiliateUrl } from "@/lib/utils/affiliate";
+import { detectMerchantIdFromUrl, extractAmazonAsin } from "@/lib/utils/merchant";
 
 export function WishlistForm() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export function WishlistForm() {
   const [actualPriceMemo, setActualPriceMemo] = useState("");
   const [targetSaleEventId, setTargetSaleEventId] = useState(searchParams.get("saleId") ?? "");
   const [note, setNote] = useState("");
+  const [asin, setAsin] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,6 +52,14 @@ export function WishlistForm() {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    const detected = detectMerchantIdFromUrl(productUrl, merchants);
+    if (detected) {
+      setMerchantId(detected);
+    }
+    setAsin(extractAmazonAsin(productUrl));
+  }, [merchants, productUrl]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,7 +103,7 @@ export function WishlistForm() {
       setToast("欲しいものを保存しました。");
       setTimeout(() => router.push("/wishlist"), 700);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "保存できませんでした。");
+      setError(saveError instanceof Error ? saveError.message : "保存に失敗しました。再試行してください。");
     } finally {
       setSaving(false);
     }
@@ -104,6 +114,7 @@ export function WishlistForm() {
   }
 
   return (
+    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
     <Card>
       {error ? <div className="mb-4"><ErrorState message={error} onRetry={load} /></div> : null}
       <form className="space-y-5" onSubmit={handleSubmit}>
@@ -114,6 +125,7 @@ export function WishlistForm() {
         <div>
           <label className="text-sm font-semibold" htmlFor="productUrl">商品URL</label>
           <input id="productUrl" type="url" className="mt-2 w-full rounded-md border border-line px-3 py-2" value={productUrl} onChange={(event) => setProductUrl(event.target.value)} required />
+          {asin ? <p className="mt-2 text-xs text-muted">検出したASIN: {asin}</p> : null}
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
@@ -150,9 +162,17 @@ export function WishlistForm() {
             </div>
           </div>
         ) : null}
-        <Button type="submit" disabled={saving}>{saving ? "保存中" : "保存する"}</Button>
+        <div className="sticky bottom-3 rounded-lg bg-white/90 py-2 backdrop-blur">
+          <Button type="submit" disabled={saving} className="w-full sm:w-auto">{saving ? "保存中" : "保存する"}</Button>
+        </div>
       </form>
       {toast ? <Toast message={toast} onClose={() => setToast(null)} /> : null}
     </Card>
+    <Card className="h-fit">
+      <div className="aspect-square rounded-lg border border-dashed border-line bg-surface" />
+      <p className="mt-3 text-sm font-semibold">商品画像はプレースホルダーで表示します</p>
+      <p className="mt-2 text-sm leading-6 text-muted">v1では外部サイトの商品画像を取得せず、画像URL入力欄も設けません。</p>
+    </Card>
+    </div>
   );
 }

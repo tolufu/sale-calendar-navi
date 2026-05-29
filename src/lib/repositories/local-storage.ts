@@ -19,6 +19,7 @@ import type {
   WishItem,
   WishItemInput
 } from "@/lib/repositories/types";
+import { limitHistoryItems } from "@/lib/utils/history";
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") {
@@ -70,7 +71,7 @@ export class LocalSaleRepository implements SaleRepository {
 export class LocalWishlistRepository implements WishlistRepository {
   async list(userId: string): Promise<WishItem[]> {
     return readJson<WishItem[]>(keys.wishlist(userId), []).sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
 
@@ -121,9 +122,7 @@ export class LocalWishlistRepository implements WishlistRepository {
 
 export class LocalHistoryRepository implements HistoryRepository {
   async list(userId: string): Promise<PurchaseHistory[]> {
-    return readJson<PurchaseHistory[]>(keys.history(userId), []).sort(
-      (a, b) => new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime()
-    );
+    return limitHistoryItems(readJson<PurchaseHistory[]>(keys.history(userId), []));
   }
 
   async create(userId: string, input: PurchaseHistoryInput): Promise<PurchaseHistory> {
@@ -133,8 +132,17 @@ export class LocalHistoryRepository implements HistoryRepository {
       userId
     };
     const history = readJson<PurchaseHistory[]>(keys.history(userId), []);
-    writeJson(keys.history(userId), [item, ...history]);
+    writeJson(keys.history(userId), limitHistoryItems([item, ...history]));
     return item;
+  }
+
+  async remove(userId: string, id: string): Promise<void> {
+    const history = readJson<PurchaseHistory[]>(keys.history(userId), []);
+    writeJson(keys.history(userId), history.filter((item) => item.id !== id));
+  }
+
+  async clear(userId: string): Promise<void> {
+    writeJson(keys.history(userId), []);
   }
 }
 

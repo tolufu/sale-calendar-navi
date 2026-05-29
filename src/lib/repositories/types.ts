@@ -20,6 +20,24 @@ export type SaleEvent = {
   endAt: string;
   description: string;
   sourceUrl: string | null;
+  strategyMemo?: string;
+  relatedSaleEventIds?: string[];
+};
+
+export type ProductGroup = {
+  id: string;
+  name: string;
+  description: string;
+  placeholderKey: string;
+};
+
+export type Offer = {
+  id: string;
+  merchantId: string;
+  productGroupId: string;
+  productUrl: string;
+  priceMemo: string | null;
+  updatedAt: string;
 };
 
 export type WishItem = {
@@ -39,19 +57,20 @@ export type WishItem = {
 
 export type WishItemInput = Omit<WishItem, "id" | "userId" | "createdAt" | "updatedAt">;
 
-export type PurchaseHistory = {
+export type ViewHistory = {
   id: string;
   userId: string;
-  wishItemId: string | null;
-  merchantId: string;
+  type: "sale" | "article" | "deletedWish";
   title: string;
-  purchasedPrice: number | null;
-  purchasedAt: string;
-  saleEventId: string | null;
+  href: string | null;
+  merchantId: string | null;
+  occurredAt: string;
   memo: string | null;
 };
 
-export type PurchaseHistoryInput = Omit<PurchaseHistory, "id" | "userId">;
+export type ViewHistoryInput = Omit<ViewHistory, "id" | "userId">;
+export type PurchaseHistory = ViewHistory;
+export type PurchaseHistoryInput = ViewHistoryInput;
 
 export type NotificationSetting = {
   userId: string;
@@ -68,6 +87,12 @@ export type Article = {
   tags: string[];
   publishedAt: string;
 };
+
+export type LoadingState = "idle" | "loading" | "success" | "empty" | "error";
+
+export type Result<T, E = string> =
+  | { ok: true; value: T }
+  | { ok: false; error: E };
 
 export interface SaleRepository {
   list(): Promise<SaleEvent[]>;
@@ -88,8 +113,10 @@ export interface WishlistRepository {
 }
 
 export interface HistoryRepository {
-  list(userId: string): Promise<PurchaseHistory[]>;
-  create(userId: string, input: PurchaseHistoryInput): Promise<PurchaseHistory>;
+  list(userId: string): Promise<ViewHistory[]>;
+  create(userId: string, input: ViewHistoryInput): Promise<ViewHistory>;
+  remove(userId: string, id: string): Promise<void>;
+  clear(userId: string): Promise<void>;
 }
 
 export interface NotificationRepository {

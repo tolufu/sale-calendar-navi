@@ -9,3 +9,7 @@ export function formatPrice(value: number | null): string {
     maximumFractionDigits: 0
   }).format(value);
 }
+
+export function calculateEffectivePrice(basePrice: number, discount = 0, pointValue = 0): number {
+  return Math.max(0, basePrice - discount - pointValue);
+}
