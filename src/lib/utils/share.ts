@@ -22,6 +22,7 @@ export function buildCompareShareText(item: Pick<WishItem, "title" | "desiredPri
   if (effectivePrice !== null) {
     parts.push(`手入力の実質価格メモ: ${effectivePrice.toLocaleString("ja-JP")}円`);
   }
+  parts.push("※手入力値・最新は各サイトで確認");
   parts.push("#セールカレンダー比較ナビ");
   return parts.join(" ");
 }

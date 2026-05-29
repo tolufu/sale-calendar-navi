@@ -45,6 +45,8 @@ export function HistoryPageClient() {
 
   async function clear() {
     if (!userId) return;
+    const confirmed = window.confirm("履歴をすべて削除します。よろしいですか？");
+    if (!confirmed) return;
     await getRepositories().history.clear(userId);
     await load();
   }

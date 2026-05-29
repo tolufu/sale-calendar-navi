@@ -45,4 +45,37 @@ describe("reminders", () => {
     expect(reminders).toHaveLength(1);
     expect(reminders[0]).toMatchObject({ wishItemId: "wish-1", saleEventId: "sale-1", timing: "threeDaysBefore" });
   });
+
+  it("candidates の merchantId が一致する保存商品も通知候補にする", () => {
+    const reminders = generateUpcomingSaleReminders({
+      wishlist: [
+        {
+          ...wish,
+          merchantId: "amazon",
+          candidates: [
+            {
+              merchantId: "rakuten",
+              originalUrl: "https://example.com/rakuten/item",
+              affiliateUrl: null,
+              breakdown: {
+                productPrice: null,
+                shippingFee: null,
+                couponDiscount: null,
+                grantedPoints: null,
+                pointRate: null
+              },
+              priceMemo: null,
+              lastCheckedAt: null,
+              imageSource: "placeholder"
+            }
+          ]
+        }
+      ],
+      saleEvents: [sale],
+      now: new Date("2026-06-01T09:00:00+09:00")
+    });
+
+    expect(reminders).toHaveLength(1);
+    expect(reminders[0]).toMatchObject({ merchantId: "rakuten", wishItemId: "wish-1", saleEventId: "sale-1" });
+  });
 });

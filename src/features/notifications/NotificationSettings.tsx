@@ -11,7 +11,7 @@ import { saleEvents } from "@/data/sales";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
 import type { NotificationSetting, WishItem } from "@/lib/repositories/types";
-import { defaultNotificationSetting } from "@/lib/services/notifications";
+import { defaultNotificationSetting, isValidNotificationEmail } from "@/lib/services/notifications";
 import { generateUpcomingSaleReminders, reminderTimingLabels, type ReminderTiming } from "@/lib/utils/reminders";
 
 export function NotificationSettings() {
@@ -20,6 +20,7 @@ export function NotificationSettings() {
   const [wishlist, setWishlist] = useState<WishItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   async function load() {
@@ -48,6 +49,12 @@ export function NotificationSettings() {
 
   async function save() {
     if (!setting) return;
+    const email = setting.email?.trim() ?? "";
+    if (email && !isValidNotificationEmail(email)) {
+      setEmailError("メールアドレスの形式を確認してください。");
+      return;
+    }
+    setEmailError(null);
     await getRepositories().notifications.save(setting);
     setToast("通知設定を保存しました。");
   }
@@ -91,9 +98,18 @@ export function NotificationSettings() {
           type="email"
           className="mt-2 w-full rounded-md border border-line px-3 py-2"
           value={current.email ?? ""}
-          onChange={(event) => updateSetting({ email: event.target.value || null })}
+          onChange={(event) => {
+            const email = event.target.value;
+            updateSetting({ email: email || null });
+            if (!email || isValidNotificationEmail(email)) {
+              setEmailError(null);
+            }
+          }}
           placeholder="name@example.com"
+          aria-describedby={emailError ? "email-error" : undefined}
+          aria-invalid={emailError ? "true" : "false"}
         />
+        {emailError ? <p id="email-error" className="mt-2 text-sm font-semibold text-red-700">{emailError}</p> : null}
 
         <fieldset className="mt-6">
           <legend className="text-sm font-semibold">通知タイミング</legend>

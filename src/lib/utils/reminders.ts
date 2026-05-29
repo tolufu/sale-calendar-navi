@@ -25,6 +25,10 @@ const timingOffsets: Record<ReminderTiming, number> = {
   atStart: 0
 };
 
+function matchesSaleMerchant(item: WishItem, merchantId: string): boolean {
+  return item.merchantId === merchantId || item.candidates?.some((candidate) => candidate.merchantId === merchantId) === true;
+}
+
 function startOfDay(value: Date): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
@@ -59,7 +63,7 @@ export function generateUpcomingSaleReminders({
 
   return wishlist.flatMap((item) =>
     saleEvents
-      .filter((sale) => sale.merchantId === item.merchantId && enabledMerchant(sale.merchantId))
+      .filter((sale) => matchesSaleMerchant(item, sale.merchantId) && enabledMerchant(sale.merchantId))
       .flatMap((sale) =>
         enabledTimings
           .filter((timing) => isReminderTimingDue(sale.startAt, now, timing))

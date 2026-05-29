@@ -8,6 +8,10 @@ export function createUnsubscribeToken(userId: string): string {
   return source.replace(/[^a-zA-Z0-9]/g, "");
 }
 
+export function isValidNotificationEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
 export function defaultNotificationSetting(userId: string): NotificationSetting {
   return {
     userId,

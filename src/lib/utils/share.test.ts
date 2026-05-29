@@ -21,5 +21,6 @@ describe("share text", () => {
     expect(text).not.toContain("user_anon_123");
     expect(text).not.toContain("非公開メモ");
     expect(text).toContain("5,000円");
+    expect(text).toContain("※手入力値・最新は各サイトで確認");
   });
 });
