@@ -29,6 +29,25 @@ export type ProductGroup = {
   name: string;
   description: string;
   placeholderKey: string;
+  desiredPrice?: number | null;
+  currentEffectivePriceMemo?: string | null;
+};
+
+export type ReferenceLinkKind = "kakaku" | "maker" | "other";
+
+export type ReferenceLink = {
+  id: string;
+  kind: ReferenceLinkKind;
+  label: string;
+  url: string;
+};
+
+export type PriceBreakdown = {
+  productPrice: number | null;
+  shippingFee: number | null;
+  couponDiscount: number | null;
+  grantedPoints: number | null;
+  pointRate: number | null;
 };
 
 export type Offer = {
@@ -36,9 +55,33 @@ export type Offer = {
   merchantId: string;
   productGroupId: string;
   productUrl: string;
+  referenceUrls?: string[];
+  originalUrl?: string;
+  affiliateUrl?: string | null;
+  price?: number | null;
+  shippingFee?: number | null;
+  couponAmount?: number | null;
+  pointAmount?: number | null;
+  pointValueRate?: number | null;
+  effectivePrice?: number | null;
+  checkedAt?: string | null;
+  sourceType?: "manual" | "affiliate" | "imported";
+  imageSource?: "placeholder";
   priceMemo: string | null;
   updatedAt: string;
 };
+
+export type PriceCandidate = {
+  merchantId: string;
+  originalUrl: string;
+  affiliateUrl: string | null;
+  breakdown: PriceBreakdown;
+  priceMemo: string | null;
+  lastCheckedAt: string | null;
+  imageSource: "placeholder";
+};
+
+export const WISH_ITEM_SCHEMA_VERSION = 2;
 
 export type WishItem = {
   id: string;
@@ -53,6 +96,10 @@ export type WishItem = {
   note: string | null;
   createdAt: string;
   updatedAt: string;
+  schemaVersion?: number;
+  candidates?: PriceCandidate[];
+  referenceLinks?: ReferenceLink[];
+  lastCheckedAt?: string | null;
 };
 
 export type WishItemInput = Omit<WishItem, "id" | "userId" | "createdAt" | "updatedAt">;

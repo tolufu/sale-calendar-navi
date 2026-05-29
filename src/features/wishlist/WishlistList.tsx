@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { ExternalLink, LinkIcon, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -13,10 +13,14 @@ import { Toast } from "@/components/ui/Toast";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
 import type { Merchant, WishItem } from "@/lib/repositories/types";
-import { formatPrice } from "@/lib/utils/price";
+import { formatPrice, pickCandidateEffectivePrice, pickEffectivePriceDiff } from "@/lib/utils/price";
 
 function imagePath(key: string): string {
   return `/images/placeholders/${key}.svg`;
+}
+
+function merchantName(merchants: Merchant[], merchantId: string): string {
+  return merchants.find((merchant) => merchant.merchantId === merchantId)?.name ?? merchantId;
 }
 
 export function WishlistList() {
@@ -62,10 +66,14 @@ export function WishlistList() {
   async function saveEdit(item: WishItem) {
     if (!userId) return;
     try {
+      const candidates = item.candidates?.length
+        ? item.candidates.map((candidate, index) => index === 0 ? { ...candidate, priceMemo: draftActualPriceMemo.trim() || null } : candidate)
+        : undefined;
       await getRepositories().wishlist.update(userId, item.id, {
         title: draftTitle.trim() || item.title,
         desiredPrice: draftDesiredPrice ? Number(draftDesiredPrice) : null,
-        actualPriceMemo: draftActualPriceMemo.trim() || null
+        actualPriceMemo: draftActualPriceMemo.trim() || null,
+        candidates
       });
       setEditingId(null);
       setToast({ message: "欲しいものを更新しました。" });
@@ -128,6 +136,10 @@ export function WishlistList() {
     <div className="grid gap-4 md:grid-cols-2">
       {items.map((item) => {
         const merchant = merchants.find((entry) => entry.merchantId === item.merchantId);
+        const primaryCandidate = item.candidates?.[0] ?? null;
+        const primaryEffectivePrice = primaryCandidate ? pickCandidateEffectivePrice(primaryCandidate) : null;
+        const diff = item.candidates ? pickEffectivePriceDiff(item.candidates) : null;
+        const linkLabel = item.merchantId === "rakuten" ? "楽天で見る" : "外部リンク";
         return (
           <Card key={item.id} className="grid grid-cols-[96px_1fr] gap-4 md:grid-cols-[128px_1fr]">
             <Image src={imagePath(item.placeholderKey)} alt="" width={96} height={96} className="rounded-lg border border-line bg-surface" />
@@ -178,12 +190,24 @@ export function WishlistList() {
               ) : (
                 <>
                   <p className="mt-3 text-sm text-muted">希望価格: {formatPrice(item.desiredPrice)}</p>
-                  <p className="mt-1 text-sm text-muted">登録日: {new Date(item.createdAt).toLocaleDateString("ja-JP")}</p>
+                  <p className="mt-1 text-sm text-muted">計算済み実質価格: {primaryEffectivePrice === null ? "未計算" : formatPrice(primaryEffectivePrice)}</p>
+                  <p className="mt-1 text-sm text-muted">最終確認日: {item.lastCheckedAt ? new Date(item.lastCheckedAt).toLocaleDateString("ja-JP") : "未確認"}</p>
                   {item.actualPriceMemo ? <p className="mt-2 text-sm leading-6 text-muted">前回メモ: {item.actualPriceMemo}</p> : null}
+                  {item.referenceLinks?.length ? (
+                    <p className="mt-2 inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-xs font-semibold text-muted">
+                      <LinkIcon className="h-3.5 w-3.5" />
+                      参考リンク {item.referenceLinks.length}件
+                    </p>
+                  ) : null}
+                  {diff ? (
+                    <p className="mt-2 rounded-md border border-line bg-surface px-3 py-2 text-xs leading-5 text-muted">
+                      差額目安: {merchantName(merchants, diff.lowerMerchantId)}が{formatPrice(diff.amount)}低い見込み（手入力値）
+                    </p>
+                  ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <a href={item.productUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-accent hover:bg-surface">
                       <ExternalLink className="h-4 w-4" />
-                      外部リンク
+                      {linkLabel}
                     </a>
                     {item.targetSaleEventId ? (
                       <Link href={`/sales/${item.targetSaleEventId}`} className="inline-flex min-h-10 items-center rounded-md border border-line px-3 py-2 text-sm font-semibold hover:bg-surface">
@@ -191,6 +215,23 @@ export function WishlistList() {
                       </Link>
                     ) : null}
                   </div>
+                  {item.referenceLinks?.length ? (
+                    <details className="mt-3 text-sm">
+                      <summary className="cursor-pointer font-semibold text-accent">参考リンクと元URL</summary>
+                      <div className="mt-2 space-y-2 rounded-md border border-line bg-surface p-3">
+                        {primaryCandidate?.originalUrl ? (
+                          <a href={primaryCandidate.originalUrl} target="_blank" rel="noreferrer" className="block break-all text-xs text-muted underline">
+                            元URLを確認
+                          </a>
+                        ) : null}
+                        {item.referenceLinks.map((link) => (
+                          <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="block break-all text-xs font-semibold text-accent underline">
+                            {link.label}
+                          </a>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
                 </>
               )}
             </div>

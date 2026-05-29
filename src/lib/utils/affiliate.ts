@@ -1,11 +1,45 @@
+const DEFAULT_RAKUTEN_SCID = process.env.NEXT_PUBLIC_RAKUTEN_AFFILIATE_SCID || "af_link_dummy";
+
+function isRakutenHost(hostname: string): boolean {
+  const normalized = hostname.replace(/^www\./, "").toLowerCase();
+  return normalized === "rakuten.co.jp" || normalized.endsWith(".rakuten.co.jp");
+}
+
+export function convertRakutenAffiliate(url: string, scid = DEFAULT_RAKUTEN_SCID): string {
+  try {
+    const parsed = new URL(url);
+    if (!isRakutenHost(parsed.hostname)) {
+      return url;
+    }
+    if (!parsed.searchParams.has("scid")) {
+      parsed.searchParams.set("scid", scid);
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+export function buildAffiliateUrl(
+  url: string,
+  merchantAffiliate: { provider: string; enabled: boolean } | null | undefined
+): string | null {
+  if (!merchantAffiliate?.enabled || merchantAffiliate.provider !== "rakuten") {
+    return null;
+  }
+
+  const converted = convertRakutenAffiliate(url);
+  return converted === url ? null : converted;
+}
+
 export function convertRakutenAffiliateUrl(url: string, affiliateId?: string): string {
   if (!affiliateId) {
-    return url;
+    return convertRakutenAffiliate(url);
   }
 
   try {
     const parsed = new URL(url);
-    if (!parsed.hostname.includes("rakuten.co.jp")) {
+    if (!isRakutenHost(parsed.hostname)) {
       return url;
     }
 

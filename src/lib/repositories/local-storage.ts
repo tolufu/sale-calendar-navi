@@ -20,6 +20,7 @@ import type {
   WishItemInput
 } from "@/lib/repositories/types";
 import { limitHistoryItems } from "@/lib/utils/history";
+import { migrateWishItem, syncWishItemMirrors } from "@/lib/utils/wish-item";
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") {
@@ -70,7 +71,7 @@ export class LocalSaleRepository implements SaleRepository {
 
 export class LocalWishlistRepository implements WishlistRepository {
   async list(userId: string): Promise<WishItem[]> {
-    return readJson<WishItem[]>(keys.wishlist(userId), []).sort(
+    return readJson<WishItem[]>(keys.wishlist(userId), []).map(migrateWishItem).sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -82,13 +83,13 @@ export class LocalWishlistRepository implements WishlistRepository {
 
   async create(userId: string, input: WishItemInput): Promise<WishItem> {
     const now = new Date().toISOString();
-    const item: WishItem = {
+    const item = syncWishItemMirrors<WishItem>({
       ...input,
       id: crypto.randomUUID(),
       userId,
       createdAt: now,
       updatedAt: now
-    };
+    });
     const items = readJson<WishItem[]>(keys.wishlist(userId), []);
     writeJson(keys.wishlist(userId), [item, ...items]);
     return item;
@@ -101,11 +102,12 @@ export class LocalWishlistRepository implements WishlistRepository {
       throw new Error("欲しいものが見つかりません。");
     }
 
-    const updated = {
-      ...items[index],
+    const current = migrateWishItem(items[index]);
+    const updated = syncWishItemMirrors<WishItem>({
+      ...current,
       ...patch,
       updatedAt: new Date().toISOString()
-    };
+    });
     items[index] = updated;
     writeJson(keys.wishlist(userId), items);
     return updated;
