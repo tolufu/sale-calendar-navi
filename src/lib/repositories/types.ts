@@ -122,17 +122,25 @@ export type PurchaseHistoryInput = ViewHistoryInput;
 export type NotificationSetting = {
   userId: string;
   enabled: boolean;
-  leadDays: number;
+  email: string | null;
+  timings: {
+    threeDaysBefore: boolean;
+    oneDayBefore: boolean;
+    atStart: boolean;
+  };
   perMerchant: Record<string, boolean> | null;
+  unsubscribeToken: string;
 };
 
 export type Article = {
   slug: string;
   title: string;
+  description: string;
   body: string;
   ogImage: string;
   tags: string[];
   publishedAt: string;
+  relatedSlugs?: string[];
 };
 
 export type LoadingState = "idle" | "loading" | "success" | "empty" | "error";

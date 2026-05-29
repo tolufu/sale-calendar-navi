@@ -14,6 +14,7 @@ import { getRepositories } from "@/lib/repositories";
 import type { SaleEvent, WishItem } from "@/lib/repositories/types";
 import { formatDateTime, formatSaleStatus, getSaleStatus } from "@/lib/utils/date";
 import { formatPrice } from "@/lib/utils/price";
+import { buildSaleShareText, buildXIntentUrl } from "@/lib/utils/share";
 
 export function SaleDetail({ saleId }: { saleId: string }) {
   const [sale, setSale] = useState<SaleEvent | null>(null);
@@ -88,7 +89,7 @@ export function SaleDetail({ saleId }: { saleId: string }) {
             </a>
           ) : null}
           <a
-            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${sale.title} を確認`)}`}
+            href={buildXIntentUrl(buildSaleShareText(sale))}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-10 items-center rounded-md border border-line px-4 py-2 text-sm font-semibold hover:bg-surface"

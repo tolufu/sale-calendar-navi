@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, LinkIcon, Pencil, Trash2 } from "lucide-react";
+import { ExternalLink, LinkIcon, Pencil, Share2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -15,6 +15,7 @@ import { getRepositories } from "@/lib/repositories";
 import type { Merchant, PriceCandidate, SaleEvent, WishItem } from "@/lib/repositories/types";
 import { buildAffiliateUrl } from "@/lib/utils/affiliate";
 import { formatPrice, pickCandidateEffectivePrice, pickEffectivePriceDiff } from "@/lib/utils/price";
+import { buildCompareShareText, buildXIntentUrl } from "@/lib/utils/share";
 
 function imagePath(key: string): string {
   return `/images/placeholders/${key}.svg`;
@@ -249,6 +250,14 @@ export function WishlistList() {
     }
   }
 
+  function shareCompare(item: WishItem, effectivePrice: number | null) {
+    const confirmed = window.confirm("共有文面には保存URL、匿名ID、非公開メモを含めません。Xの投稿画面を開きますか？");
+    if (!confirmed) {
+      return;
+    }
+    window.open(buildXIntentUrl(buildCompareShareText(item, effectivePrice)), "_blank", "noopener,noreferrer");
+  }
+
   if (loading) {
     return <Skeleton className="h-80 w-full" />;
   }
@@ -405,6 +414,10 @@ export function WishlistList() {
                         関連セール
                       </Link>
                     ) : null}
+                    <Button variant="secondary" onClick={() => shareCompare(item, primaryEffectivePrice)} className="gap-2">
+                      <Share2 className="h-4 w-4" />
+                      比較メモをXで共有
+                    </Button>
                   </div>
                   {item.referenceLinks?.length ? (
                     <details className="mt-3 text-sm">

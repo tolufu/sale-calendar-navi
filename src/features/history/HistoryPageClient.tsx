@@ -51,7 +51,7 @@ export function HistoryPageClient() {
 
   if (loading) return <Skeleton className="h-72 w-full" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (items.length === 0) return <EmptyState title="購入履歴はまだありません" description="v1.2 で欲しいものから履歴化する導線を拡張します。" />;
+  if (items.length === 0) return <EmptyState title="履歴はまだありません" description="セール詳細や記事を開くと、最近チェックした項目が最大30件まで保存されます。" />;
 
   const visibleItems = activeType === "all" ? items : items.filter((item) => item.type === activeType);
 

@@ -19,6 +19,7 @@ import type {
   WishItem,
   WishItemInput
 } from "@/lib/repositories/types";
+import { defaultNotificationSetting, normalizeNotificationSetting } from "@/lib/services/notifications";
 import { limitHistoryItems } from "@/lib/utils/history";
 import { migrateWishItem, syncWishItemMirrors } from "@/lib/utils/wish-item";
 
@@ -150,17 +151,13 @@ export class LocalHistoryRepository implements HistoryRepository {
 
 export class LocalNotificationRepository implements NotificationRepository {
   async get(userId: string): Promise<NotificationSetting> {
-    return readJson<NotificationSetting>(keys.notification(userId), {
-      userId,
-      enabled: false,
-      leadDays: 2,
-      perMerchant: null
-    });
+    return normalizeNotificationSetting(userId, readJson<Partial<NotificationSetting>>(keys.notification(userId), defaultNotificationSetting(userId)));
   }
 
   async save(setting: NotificationSetting): Promise<NotificationSetting> {
-    writeJson(keys.notification(setting.userId), setting);
-    return setting;
+    const normalized = normalizeNotificationSetting(setting.userId, setting);
+    writeJson(keys.notification(setting.userId), normalized);
+    return normalized;
   }
 }
 
