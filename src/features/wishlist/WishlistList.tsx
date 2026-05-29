@@ -23,6 +23,14 @@ function merchantName(merchants: Merchant[], merchantId: string): string {
   return merchants.find((merchant) => merchant.merchantId === merchantId)?.name ?? merchantId;
 }
 
+function parseDesiredPrice(value: string): number | null {
+  if (!value.trim()) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 export function WishlistList() {
   const [items, setItems] = useState<WishItem[]>([]);
   const [merchants, setMerchants] = useState<Merchant[]>([]);
@@ -71,7 +79,7 @@ export function WishlistList() {
         : undefined;
       await getRepositories().wishlist.update(userId, item.id, {
         title: draftTitle.trim() || item.title,
-        desiredPrice: draftDesiredPrice ? Number(draftDesiredPrice) : null,
+        desiredPrice: parseDesiredPrice(draftDesiredPrice),
         actualPriceMemo: draftActualPriceMemo.trim() || null,
         candidates
       });
@@ -205,7 +213,7 @@ export function WishlistList() {
                     </p>
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <a href={item.productUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-accent hover:bg-surface">
+                    <a href={item.productUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-accent hover:bg-surface">
                       <ExternalLink className="h-4 w-4" />
                       {linkLabel}
                     </a>
@@ -220,12 +228,12 @@ export function WishlistList() {
                       <summary className="cursor-pointer font-semibold text-accent">参考リンクと元URL</summary>
                       <div className="mt-2 space-y-2 rounded-md border border-line bg-surface p-3">
                         {primaryCandidate?.originalUrl ? (
-                          <a href={primaryCandidate.originalUrl} target="_blank" rel="noreferrer" className="block break-all text-xs text-muted underline">
+                          <a href={primaryCandidate.originalUrl} target="_blank" rel="noopener noreferrer" className="block break-all text-xs text-muted underline">
                             元URLを確認
                           </a>
                         ) : null}
                         {item.referenceLinks.map((link) => (
-                          <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="block break-all text-xs font-semibold text-accent underline">
+                          <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className="block break-all text-xs font-semibold text-accent underline">
                             {link.label}
                           </a>
                         ))}

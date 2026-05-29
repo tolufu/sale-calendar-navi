@@ -54,6 +54,43 @@ describe("migrateWishItem", () => {
     expect(migrated.lastCheckedAt).toBe("2026-05-02T00:00:00.000Z");
     expect(migrateWishItem(migrated)).toEqual(migrated);
   });
+
+  it("移行時に負の希望価格と不正な参考リンクを破棄する", () => {
+    const migrated = migrateWishItem({
+      ...baseV1Item,
+      desiredPrice: -1,
+      referenceLinks: [
+        {
+          id: "valid",
+          kind: "maker",
+          label: " メーカー公式 ",
+          url: "https://example.com/product"
+        },
+        {
+          id: "invalid-url",
+          kind: "other",
+          label: "不正URL",
+          url: "javascript:alert(1)"
+        },
+        {
+          id: "empty-label",
+          kind: "kakaku",
+          label: " ",
+          url: "https://example.com/no-label"
+        }
+      ]
+    });
+
+    expect(migrated.desiredPrice).toBeNull();
+    expect(migrated.referenceLinks).toEqual([
+      {
+        id: "valid",
+        kind: "maker",
+        label: "メーカー公式",
+        url: "https://example.com/product"
+      }
+    ]);
+  });
 });
 
 describe("syncWishItemMirrors", () => {

@@ -19,6 +19,12 @@ describe("convertRakutenAffiliate", () => {
     expect(result).toContain("scid=af_link_dummy");
   });
 
+  it("既存scidがある楽天URLは上書きしない", () => {
+    expect(convertRakutenAffiliate("https://item.rakuten.co.jp/shop/item?scid=existing&variant=red")).toBe(
+      "https://item.rakuten.co.jp/shop/item?scid=existing&variant=red"
+    );
+  });
+
   it("merchants設定が楽天有効の場合だけaffiliateUrlを返す", () => {
     expect(buildAffiliateUrl("https://item.rakuten.co.jp/shop/item", { provider: "rakuten", enabled: true })).toContain(
       "scid=af_link_dummy"

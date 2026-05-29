@@ -10,17 +10,11 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Toast } from "@/components/ui/Toast";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
-import type { Merchant, ReferenceLink, ReferenceLinkKind, SaleEvent } from "@/lib/repositories/types";
+import type { Merchant, SaleEvent } from "@/lib/repositories/types";
 import { buildAffiliateUrl } from "@/lib/utils/affiliate";
 import { detectMerchantIdFromUrl, extractAmazonAsin } from "@/lib/utils/merchant";
 import { calculateEffectivePrice, formatPrice } from "@/lib/utils/price";
-
-type ReferenceLinkDraft = {
-  id: string;
-  kind: ReferenceLinkKind;
-  label: string;
-  url: string;
-};
+import { MAX_REFERENCE_LINKS, parseReferenceLinks, type ReferenceLinkDraft } from "@/lib/utils/reference-link";
 
 function parseOptionalAmount(value: string): number | null {
   if (!value.trim()) {
@@ -33,24 +27,12 @@ function parseOptionalAmount(value: string): number | null {
   return parsed;
 }
 
-function parseReferenceLinks(drafts: ReferenceLinkDraft[]): ReferenceLink[] {
-  return drafts
-    .filter((draft) => draft.label.trim() || draft.url.trim())
-    .map((draft) => {
-      const parsed = new URL(draft.url);
-      if (!["http:", "https:"].includes(parsed.protocol)) {
-        throw new Error("参考リンクは http または https のURLで入力してください。");
-      }
-      if (!draft.label.trim()) {
-        throw new Error("参考リンクの表示名を入力してください。");
-      }
-      return {
-        id: draft.id,
-        kind: draft.kind,
-        label: draft.label.trim().slice(0, 40),
-        url: parsed.toString()
-      };
-    });
+function parseDesiredPrice(value: string): number | null {
+  if (!value.trim()) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 export function WishlistForm() {
@@ -161,7 +143,7 @@ export function WishlistForm() {
         title: title.trim(),
         productUrl: affiliateUrl ?? productUrl,
         merchantId,
-        desiredPrice: desiredPrice ? Number(desiredPrice) : null,
+        desiredPrice: parseDesiredPrice(desiredPrice),
         actualPriceMemo: actualPriceMemo.trim() || null,
         targetSaleEventId: targetSaleEventId || null,
         placeholderKey: selectedMerchant.placeholderKey,
@@ -265,6 +247,7 @@ export function WishlistForm() {
                   type="button"
                   variant="secondary"
                   className="min-h-8 px-3 py-1"
+                  disabled={referenceLinks.length >= MAX_REFERENCE_LINKS}
                   onClick={() => setReferenceLinks((current) => [...current, { id: crypto.randomUUID(), kind: "other", label: "", url: "" }])}
                 >
                   <Plus className="mr-1 h-4 w-4" />
@@ -277,7 +260,7 @@ export function WishlistForm() {
                     <select
                       className="rounded-md border border-line px-3 py-2 text-sm"
                       value={link.kind}
-                      onChange={(event) => setReferenceLinks((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, kind: event.target.value as ReferenceLinkKind } : entry))}
+                      onChange={(event) => setReferenceLinks((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, kind: event.target.value as ReferenceLinkDraft["kind"] } : entry))}
                     >
                       <option value="kakaku">価格比較</option>
                       <option value="maker">公式</option>
@@ -312,6 +295,9 @@ export function WishlistForm() {
                 <LinkIcon className="h-3.5 w-3.5" />
                 参考リンクは保存のみで、価格や画像は取得しません。
               </p>
+              {referenceLinks.length >= MAX_REFERENCE_LINKS ? (
+                <p className="mt-1 text-xs text-muted">参考リンクは{MAX_REFERENCE_LINKS}件まで登録できます。</p>
+              ) : null}
             </div>
             <div>
               <label className="text-sm font-semibold" htmlFor="targetSale">対象セール</label>

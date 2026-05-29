@@ -17,6 +17,26 @@ describe("calculateEffectivePrice", () => {
     })).toBe(8700);
   });
 
+  it("小数を含む内訳はMath.roundで丸める", () => {
+    expect(calculateEffectivePrice({
+      productPrice: 1000.4,
+      shippingFee: 0,
+      couponDiscount: 0,
+      grantedPoints: 101,
+      pointRate: 0.5
+    })).toBe(950);
+  });
+
+  it("内訳経由でも計算結果を0未満にしない", () => {
+    expect(calculateEffectivePrice({
+      productPrice: 1000,
+      shippingFee: 0,
+      couponDiscount: 600,
+      grantedPoints: 1000,
+      pointRate: 1
+    })).toBe(0);
+  });
+
   it("商品価格が空なら未計算としてnullを返す", () => {
     expect(calculateEffectivePrice({
       productPrice: null,
