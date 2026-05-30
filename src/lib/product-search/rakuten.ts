@@ -7,6 +7,8 @@ import type {
 
 const RAKUTEN_SEARCH_ENDPOINT = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706";
 const DEFAULT_LIMIT = 5;
+const SEARCH_TIMEOUT_MS = 8000;
+const SEARCH_FAILURE_MESSAGE = "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。";
 
 type RakutenImage = {
   imageUrl?: string;
@@ -35,10 +37,19 @@ function firstImageUrl(item: RakutenApiItem): string | null {
 
   try {
     const parsed = new URL(imageUrl);
-    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : null;
+    const isRakutenImageHost = parsed.hostname === "image.rakuten.co.jp" || parsed.hostname.endsWith(".image.rakuten.co.jp");
+    return ["http:", "https:"].includes(parsed.protocol) && isRakutenImageHost ? parsed.toString() : null;
   } catch {
     return null;
   }
+}
+
+function searchFailureResult(): ProductSearchResult {
+  return {
+    configured: true,
+    candidates: [],
+    message: SEARCH_FAILURE_MESSAGE
+  };
 }
 
 function toCandidate(item: RakutenApiItem): ProductSearchCandidate | null {
@@ -135,31 +146,37 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
       url.searchParams.set("affiliateId", this.affiliateId);
     }
 
-    const response = await fetch(url, {
-      headers: { accept: "application/json" },
-      next: { revalidate: 3600 }
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
 
-    if (!response.ok) {
+    try {
+      const response = await fetch(url, {
+        headers: { accept: "application/json" },
+        next: { revalidate: 3600 },
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        return searchFailureResult();
+      }
+
+      const body = (await response.json()) as RakutenApiResponse;
+      const candidates = (body.Items ?? [])
+        .map((entry) => entry.Item)
+        .filter((item): item is RakutenApiItem => Boolean(item))
+        .map(toCandidate)
+        .filter((item): item is ProductSearchCandidate => item !== null);
+
       return {
         configured: true,
-        candidates: [],
-        message: "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。"
+        candidates,
+        message: candidates.length ? null : "候補が見つかりませんでした。手入力で続けられます。"
       };
+    } catch {
+      return searchFailureResult();
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const body = (await response.json()) as RakutenApiResponse;
-    const candidates = (body.Items ?? [])
-      .map((entry) => entry.Item)
-      .filter((item): item is RakutenApiItem => Boolean(item))
-      .map(toCandidate)
-      .filter((item): item is ProductSearchCandidate => item !== null);
-
-    return {
-      configured: true,
-      candidates,
-      message: candidates.length ? null : "候補が見つかりませんでした。手入力で続けられます。"
-    };
   }
 }
 

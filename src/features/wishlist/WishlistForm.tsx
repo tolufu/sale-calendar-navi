@@ -570,8 +570,8 @@ export function WishlistForm() {
     </Card>
     <Card className="h-fit">
       <div className="aspect-square rounded-lg border border-dashed border-line bg-surface" />
-      <p className="mt-3 text-sm font-semibold">商品画像はプレースホルダーで表示します</p>
-      <p className="mt-2 text-sm leading-6 text-muted">v1では外部サイトの商品画像を取得せず、画像URL入力欄も設けません。</p>
+      <p className="mt-3 text-sm font-semibold">商品画像は出典を確認して表示します</p>
+      <p className="mt-2 text-sm leading-6 text-muted">楽天API検索で候補を選んだ場合のみ、楽天APIが返した画像URLを出典明記のうえ表示します。画像がない場合はプレースホルダーを使い、画像URL入力欄は設けません。</p>
     </Card>
     </div>
   );

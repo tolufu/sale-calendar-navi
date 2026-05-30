@@ -340,7 +340,7 @@ export function WishlistList() {
           desiredPrice: item.desiredPrice,
           currentEffectivePrice: primaryEffectivePrice,
           saleImportance: saleImportance(relatedSale),
-          previousEffectivePrice: item.candidates?.[1] ? pickCandidateEffectivePrice(item.candidates[1]) : null,
+          previousEffectivePrice: null,
           checkedAt: item.lastCheckedAt ?? null
         });
         const linkLabel = item.merchantId === "rakuten" ? "楽天で見る" : "外部リンク";

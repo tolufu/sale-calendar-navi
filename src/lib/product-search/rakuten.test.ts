@@ -1,7 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { RakutenIchibaProductSearchProvider } from "@/lib/product-search/rakuten";
 
 describe("RakutenIchibaProductSearchProvider", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
   it("APIキー未設定時はモック候補を返し、手入力継続メッセージを返す", async () => {
     const provider = new RakutenIchibaProductSearchProvider(undefined, undefined);
 
@@ -50,6 +55,91 @@ describe("RakutenIchibaProductSearchProvider", () => {
       price: 1980
     });
     expect(fetchMock).toHaveBeenCalledOnce();
-    vi.unstubAllGlobals();
+  });
+
+  it("楽天APIがエラーを返した場合は空候補と手入力継続メッセージを返す", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    const provider = new RakutenIchibaProductSearchProvider("app-id");
+
+    const result = await provider.search({ query: "テスト" });
+
+    expect(result).toEqual({
+      configured: true,
+      candidates: [],
+      message: "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。"
+    });
+  });
+
+  it("楽天APIへのfetchが失敗した場合は空候補と手入力継続メッセージを返す", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network error")));
+    const provider = new RakutenIchibaProductSearchProvider("app-id");
+
+    const result = await provider.search({ query: "テスト" });
+
+    expect(result).toEqual({
+      configured: true,
+      candidates: [],
+      message: "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。"
+    });
+  });
+
+  it("楽天APIへのfetchがタイムアウトした場合は空候補と手入力継続メッセージを返す", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn((_url: URL, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+    })));
+    const provider = new RakutenIchibaProductSearchProvider("app-id");
+
+    const resultPromise = provider.search({ query: "テスト" });
+    await vi.advanceTimersByTimeAsync(8000);
+
+    await expect(resultPromise).resolves.toEqual({
+      configured: true,
+      candidates: [],
+      message: "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。"
+    });
+  });
+
+  it("楽天APIレスポンスのパースに失敗した場合は空候補と手入力継続メッセージを返す", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => {
+        throw new Error("parse error");
+      }
+    }));
+    const provider = new RakutenIchibaProductSearchProvider("app-id");
+
+    const result = await provider.search({ query: "テスト" });
+
+    expect(result).toEqual({
+      configured: true,
+      candidates: [],
+      message: "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。"
+    });
+  });
+
+  it("楽天画像ドメイン以外の画像URLはプレースホルダーへフォールバックする", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        Items: [
+          {
+            Item: {
+              itemName: "テスト商品",
+              itemUrl: "https://item.rakuten.co.jp/shop/item/",
+              mediumImageUrls: [{ imageUrl: "https://example.com/item.jpg" }]
+            }
+          }
+        ]
+      })
+    }));
+    const provider = new RakutenIchibaProductSearchProvider("app-id");
+
+    const result = await provider.search({ query: "テスト" });
+
+    expect(result.candidates[0]).toMatchObject({
+      imageUrl: null,
+      imageSource: "placeholder"
+    });
   });
 });
