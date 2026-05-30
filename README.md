@@ -35,7 +35,11 @@ NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID=
 RAKUTEN_APPLICATION_ID=
 RAKUTEN_AFFILIATE_ID=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_CONTACT_EMAIL=
 ```
+
+公開時は `NEXT_PUBLIC_SITE_URL` と `NEXT_PUBLIC_CONTACT_EMAIL` を設定してください。
+`NEXT_PUBLIC_CONTACT_EMAIL` はお問い合わせページのメール送信導線に使う公開連絡先です。
 
 ## 確認コマンド
 
@@ -80,7 +84,7 @@ npm run build
 
 ## 画像方針
 
-v1〜v1.2 の商品画像は `public/images/placeholders/` に置いた自作プレースホルダーのみを使います。v2では、楽天APIから返された画像URLに限り `imageSource = "rakuten_api"` として保存・表示できます。API未設定時や画像がない候補ではプレースホルダー表示のままです。スクレイピングや外部商品画像の無断取得・転載は行いません。
+v1〜v1.2 の商品画像は `public/images/placeholders/` に置いた自作プレースホルダーのみを使います。v2以降では、楽天公式APIから返された画像URLに限り `imageSource = "rakuten_api"` として保存し、出典を明記して表示できます。API未設定時や画像がない候補ではプレースホルダー表示のままです。ユーザー任意の画像URL入力、スクレイピング、外部商品画像の無断取得・転載は行いません。
 
 ## 禁止事項
 

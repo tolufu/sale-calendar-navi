@@ -9,21 +9,30 @@ export const metadata = buildPageMetadata({
 });
 
 export default function ContactPage() {
+  const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
+
   return (
     <>
-      <PageHeader title="お問い合わせ" description="問い合わせ送信は仮実装です。公開時に送信先を接続します。" />
+      <PageHeader title="お問い合わせ" description="ご意見、ご質問、削除依頼を受け付けています。" />
       <Card>
-        <form className="space-y-4">
-          <label className="block text-sm font-semibold">
-            メールアドレス
-            <input type="email" className="mt-2 w-full rounded-md border border-line px-3 py-2" placeholder="name@example.com" />
-          </label>
-          <label className="block text-sm font-semibold">
-            内容
-            <textarea className="mt-2 min-h-36 w-full rounded-md border border-line px-3 py-2" placeholder="お問い合わせ内容" />
-          </label>
-          <button type="button" className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white">送信準備中</button>
-        </form>
+        <p className="text-sm leading-7 text-ink">
+          お問い合わせはメールで受け付けています。ボタンを押すと、お使いのメールアプリが開きます。
+          削除依頼の場合は、対象データと確認に必要な情報を本文に記載してください。
+        </p>
+        {contactEmail ? (
+          <a
+            href={`mailto:${contactEmail}?subject=${encodeURIComponent("セールカレンダー比較ナビへのお問い合わせ")}`}
+            className="mt-4 inline-flex rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white"
+          >
+            メールで問い合わせる
+          </a>
+        ) : (
+          <p className="mt-4 rounded-md border border-line bg-slate-50 px-4 py-3 text-sm leading-6 text-muted">
+            お問い合わせ窓口を設定中です。公開環境の管理者は
+            <code className="mx-1">NEXT_PUBLIC_CONTACT_EMAIL</code>
+            を設定してください。
+          </p>
+        )}
         <p className="mt-4 text-xs leading-6 text-muted">本サービスには広告・アフィリエイトリンクが含まれる可能性があります。</p>
       </Card>
     </>
