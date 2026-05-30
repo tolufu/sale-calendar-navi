@@ -1,7 +1,7 @@
 export type ProductImageSource = "placeholder" | "rakuten_api";
 
 export type ProductSearchCandidate = {
-  provider: "rakuten";
+  provider: string;
   itemCode: string;
   title: string;
   itemUrl: string;
@@ -24,9 +24,11 @@ export type ProductSearchResult = {
 };
 
 export interface RakutenProductSearchProvider {
+  readonly merchantId: "rakuten";
   search(input: ProductSearchInput): Promise<ProductSearchResult>;
 }
 
 export interface AmazonProductSearchProvider {
+  readonly merchantId: "amazon";
   search(input: ProductSearchInput): Promise<ProductSearchResult>;
 }

@@ -12,6 +12,7 @@ import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
 import type { Merchant, PriceCandidate, SaleEvent } from "@/lib/repositories/types";
 import type { ProductSearchCandidate } from "@/lib/product-search/types";
+import { getMerchantIntegrationLabel } from "@/lib/merchants/capabilities";
 import { buildAffiliateUrl } from "@/lib/utils/affiliate";
 import { detectMerchantIdFromUrl, extractAmazonAsin } from "@/lib/utils/merchant";
 import { calculateEffectivePrice, formatPrice } from "@/lib/utils/price";
@@ -377,7 +378,10 @@ export function WishlistForm() {
           <div>
             <label className="text-sm font-semibold" htmlFor="merchant">EC</label>
             <select id="merchant" className="mt-2 w-full rounded-md border border-line px-3 py-2" value={merchantId} onChange={(event) => setMerchantId(event.target.value)}>
-              {merchants.map((merchant) => <option key={merchant.merchantId} value={merchant.merchantId}>{merchant.name}</option>)}
+              {merchants.map((merchant) => {
+                const integrationLabel = getMerchantIntegrationLabel(merchant);
+                return <option key={merchant.merchantId} value={merchant.merchantId}>{merchant.name}{integrationLabel ? ` - ${integrationLabel}` : ""}</option>;
+              })}
             </select>
           </div>
           <div>
@@ -451,7 +455,10 @@ export function WishlistForm() {
                           value={candidate.merchantId}
                           onChange={(event) => setCandidateDrafts((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, merchantId: event.target.value } : entry))}
                         >
-                          {merchants.map((merchant) => <option key={merchant.merchantId} value={merchant.merchantId}>{merchant.name}</option>)}
+                          {merchants.map((merchant) => {
+                            const integrationLabel = getMerchantIntegrationLabel(merchant);
+                            return <option key={merchant.merchantId} value={merchant.merchantId}>{merchant.name}{integrationLabel ? ` - ${integrationLabel}` : ""}</option>;
+                          })}
                         </select>
                         <input
                           aria-label="候補URL"

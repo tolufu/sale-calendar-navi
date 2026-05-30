@@ -1,6 +1,8 @@
 import type { AmazonProductSearchProvider, ProductSearchResult } from "@/lib/product-search/types";
 
 export class AmazonFutureProductSearchProvider implements AmazonProductSearchProvider {
+  readonly merchantId = "amazon";
+
   async search(): Promise<ProductSearchResult> {
     return {
       configured: false,

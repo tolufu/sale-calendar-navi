@@ -117,6 +117,8 @@ function mockSearch(input: ProductSearchInput): ProductSearchResult {
 }
 
 export class RakutenIchibaProductSearchProvider implements RakutenProductSearchProvider {
+  readonly merchantId = "rakuten";
+
   constructor(
     private readonly applicationId = process.env.RAKUTEN_APPLICATION_ID,
     private readonly affiliateId = process.env.RAKUTEN_AFFILIATE_ID

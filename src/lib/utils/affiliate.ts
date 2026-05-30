@@ -1,3 +1,5 @@
+import type { AffiliateLinkProvider } from "@/lib/providers/types";
+
 const DEFAULT_RAKUTEN_SCID = process.env.NEXT_PUBLIC_RAKUTEN_AFFILIATE_SCID || "af_link_dummy";
 
 function isRakutenHost(hostname: string): boolean {
@@ -24,13 +26,22 @@ export function buildAffiliateUrl(
   url: string,
   merchantAffiliate: { provider: string; enabled: boolean } | null | undefined
 ): string | null {
-  if (!merchantAffiliate?.enabled || merchantAffiliate.provider !== "rakuten") {
+  if (!merchantAffiliate?.enabled) {
     return null;
   }
 
-  const converted = convertRakutenAffiliate(url);
-  return converted === url ? null : converted;
+  return affiliateLinkProviders[merchantAffiliate.provider]?.buildUrl(url) ?? null;
 }
+
+export const affiliateLinkProviders: Record<string, AffiliateLinkProvider> = {
+  rakuten: {
+    providerId: "rakuten",
+    buildUrl(url) {
+      const converted = convertRakutenAffiliate(url);
+      return converted === url ? null : converted;
+    }
+  }
+};
 
 export function convertRakutenAffiliateUrl(url: string, affiliateId?: string): string {
   if (!affiliateId) {

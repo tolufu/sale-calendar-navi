@@ -1,12 +1,26 @@
+export type MerchantType = "marketplace" | "retailer" | "b2b" | "other";
+export type MerchantPlaceholderImageType = string;
+export type MerchantAffiliateProvider = string | null;
+export type MerchantIntegrationStatus = "available" | "manual-only" | "planned";
+
 export type Merchant = {
   merchantId: string;
   name: string;
+  type: MerchantType;
   colorToken: string;
   placeholderKey: string;
+  placeholderImageType: MerchantPlaceholderImageType;
+  urlHosts?: string[];
   affiliate: {
     provider: string;
     enabled: boolean;
   } | null;
+  affiliateProvider: MerchantAffiliateProvider;
+  supportsAffiliate: boolean;
+  supportsApi: boolean;
+  supportsPriceAutoFetch: boolean;
+  supportsSaleCalendar: boolean;
+  integrationStatus: MerchantIntegrationStatus;
   isActive: boolean;
   sortOrder: number;
 };

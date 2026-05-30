@@ -12,13 +12,12 @@ export function getMerchantToneClass(merchant: Pick<Merchant, "colorToken"> | nu
 export function detectMerchantIdFromUrl(url: string, merchants: Merchant[]): string | null {
   try {
     const hostname = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-    const knownHosts: Record<string, string[]> = {
-      amazon: ["amazon.co.jp", "amzn.asia"],
-      rakuten: ["rakuten.co.jp", "item.rakuten.co.jp", "books.rakuten.co.jp"]
-    };
 
     return merchants.find((merchant) =>
-      (knownHosts[merchant.merchantId] ?? []).some((host) => hostname === host || hostname.endsWith(`.${host}`))
+      (merchant.urlHosts ?? []).some((host) => {
+        const normalizedHost = host.replace(/^www\./, "").toLowerCase();
+        return hostname === normalizedHost || hostname.endsWith(`.${normalizedHost}`);
+      })
     )?.merchantId ?? null;
   } catch {
     return null;
