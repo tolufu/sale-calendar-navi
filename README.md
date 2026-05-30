@@ -2,27 +2,44 @@
 
 Amazon・楽天のセール予定を起点に、欲しい商品URL、希望価格、実質価格メモを保存するWebアプリです。
 
-## 開発
+## 必要環境
+
+- WSL2 Ubuntu-24.04 または同等の Linux 環境
+- Node.js 22 系を推奨（確認済み: `v22.22.3`）
+- npm 10 系を推奨（確認済み: `10.9.8`）
+
+Windows 側の `/mnt/c/...` や `/mnt/d/...` ではなく、Linux 側のワークスペースで作業します。
+
+## ローカル起動
+
+依存関係をインストールし、環境変数ファイルを作成して開発サーバーを起動します。
 
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-Firebase 環境変数が未設定でも、匿名ローカルIDと localStorage リポジトリで画面確認できます。
+起動後は `http://localhost:3000/` を開きます。主な確認URL:
 
-ローカル確認URL:
-
-- `http://localhost:3000/`
 - `http://localhost:3000/calendar`
 - `http://localhost:3000/calendar/amazon`
 - `http://localhost:3000/wishlist/new`
+- `http://localhost:3000/settings/notifications`
 
 ## 環境変数
 
-`.env.example` をコピーして `.env.local` を作成してください。秘密情報はコミットしません。
+`.env.local` は Git 管理対象外です。Firebaseキー、楽天APIキー、公開連絡先の実値は `.env.local` または Vercel の Environment Variables に設定し、コミットしません。
 
-Firebaseを使う場合は次の公開設定を `.env.local` に置きます。未設定時は自動でlocalStorageへフォールバックします。
+```bash
+cp .env.example .env.local
+```
+
+### Firebase
+
+Firebase Web SDK の設定値をすべて設定すると、Firebase Anonymous Auth を使います。未設定または一部未設定の場合は、ブラウザでローカル匿名IDを作成し、localStorage リポジトリへフォールバックします。
+
+現時点の Firestore リポジトリは localStorage 互換スタブです。Firebase値を設定しても、欲しいもの等の永続化先は localStorage のままです。Firestore 永続化を有効にする前に `firestore.rules` を要件に合わせて更新し、Firebase側へデプロイしてください。
 
 ```bash
 NEXT_PUBLIC_FIREBASE_API_KEY=
@@ -31,15 +48,31 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
-NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID=
+```
+
+### 楽天API・公開設定
+
+楽天商品検索APIのキーはサーバー側 Route Handler だけで使います。`RAKUTEN_APPLICATION_ID` と `RAKUTEN_AFFILIATE_ID` に `NEXT_PUBLIC_` を付けないでください。
+
+```bash
 RAKUTEN_APPLICATION_ID=
 RAKUTEN_AFFILIATE_ID=
+NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID=
+NEXT_PUBLIC_RAKUTEN_AFFILIATE_SCID=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_CONTACT_EMAIL=
 ```
 
 公開時は `NEXT_PUBLIC_SITE_URL` と `NEXT_PUBLIC_CONTACT_EMAIL` を設定してください。
 `NEXT_PUBLIC_CONTACT_EMAIL` はお問い合わせページのメール送信導線に使う公開連絡先です。
+
+予約済み機能フラグは、対象機能をレビューするまで空欄のままにします。特に共有機能をデフォルトONにしません。
+
+```bash
+ENABLE_ASP_FEED=
+ENABLE_CSV_IMPORT=
+NEXT_PUBLIC_ENABLE_PUBLIC_SHARE=
+```
 
 ## 確認コマンド
 
@@ -48,6 +81,22 @@ npm run lint
 npm run test
 npm run build
 ```
+
+必要に応じて Playwright のE2Eも実行します。
+
+```bash
+npm run test:e2e
+```
+
+## Vercel デプロイ
+
+1. Vercel でリポジトリを接続し、Framework Preset を Next.js にする。
+2. Node.js は 22 系を選ぶ。
+3. Preview / Production ごとに必要な Environment Variables を設定する。秘密値をリポジトリへ追加しない。
+4. Production の `NEXT_PUBLIC_SITE_URL` は公開URLにする。OGP、canonical、`sitemap.xml`、`robots.txt` の基準URLに使われる。
+5. `NEXT_PUBLIC_CONTACT_EMAIL` に公開してよい問い合わせ先を設定する。
+6. Firebaseを使う場合は Anonymous Authentication を有効化し、許可ドメインを確認する。Firestore永続化は現状未接続のため、有効化前に rules と実装を別途レビューする。
+7. デプロイ後に [リリースチェックリスト](./docs/release-checklist.md) と [手動リリース手順](./docs/manual-release-steps.md) を確認する。
 
 ## v1.1 価格メモ
 

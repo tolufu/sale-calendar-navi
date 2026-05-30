@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Firestore persistence is not connected yet. Keep access closed until the
+    // repository implementation and per-user rules are reviewed together.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
