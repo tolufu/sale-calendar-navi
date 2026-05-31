@@ -1,8 +1,9 @@
 import type { Merchant } from "@/lib/repositories/types";
 
 const merchantToneClasses: Record<string, string> = {
-  amazon: "border-amazon bg-blue-50 text-amazon",
-  rakuten: "border-rakuten bg-red-50 text-rakuten"
+  amazon: "border-amazon/30 bg-blue-50 text-amazon",
+  rakuten: "border-rakuten/30 bg-red-50 text-rakuten",
+  yahoo: "border-yahoo/30 bg-violet-50 text-yahoo"
 };
 
 export function getMerchantToneClass(merchant: Pick<Merchant, "colorToken"> | null | undefined): string {

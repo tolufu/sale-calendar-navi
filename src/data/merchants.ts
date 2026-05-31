@@ -44,7 +44,7 @@ export const merchants: Merchant[] = [
     merchantId: "yahoo-shopping",
     name: "Yahoo!ショッピング",
     type: "marketplace",
-    colorToken: "neutral",
+    colorToken: "yahoo",
     placeholderKey: "blue-box",
     placeholderImageType: "generic",
     urlHosts: ["shopping.yahoo.co.jp"],

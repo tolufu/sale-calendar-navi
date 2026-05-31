@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import { isAllowedRakutenImageUrl } from "@/lib/utils/rakuten-image";
 import Link from "next/link";
-import { ExternalLink, LinkIcon, Pencil, Share2, Trash2 } from "lucide-react";
+import { Bell, ExternalLink, LinkIcon, Pencil, Share2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -15,6 +16,7 @@ import { getRepositories } from "@/lib/repositories";
 import type { Merchant, PriceCandidate, SaleEvent, WishItem } from "@/lib/repositories/types";
 import { buildAffiliateUrl } from "@/lib/utils/affiliate";
 import { calculateBuyTimingScore, type SaleImportance } from "@/lib/utils/buy-timing-score";
+import { getMerchantToneClass } from "@/lib/utils/merchant";
 import { formatPrice, pickCandidateEffectivePrice, pickEffectivePriceDiff } from "@/lib/utils/price";
 import { buildCompareShareText, buildXIntentUrl } from "@/lib/utils/share";
 
@@ -317,6 +319,7 @@ export function WishlistList() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-semibold text-ink">登録 {items.length} 件</p>
         <label className="text-sm font-semibold">
           並び替え
           <select className="ml-0 mt-2 w-full rounded-md border border-line px-3 py-2 text-sm sm:ml-2 sm:mt-0 sm:w-auto" value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
@@ -325,9 +328,8 @@ export function WishlistList() {
             <option value="sale_start_asc">関連セールが近い順</option>
           </select>
         </label>
-        <Link href="/wishlist/new"><Button>＋ 登録する</Button></Link>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-4">
       {sortedItems.map((item) => {
         const merchant = merchants.find((entry) => entry.merchantId === item.merchantId);
         const primaryCandidate = item.candidates?.[0] ?? null;
@@ -344,95 +346,91 @@ export function WishlistList() {
           checkedAt: item.lastCheckedAt ?? null
         });
         const linkLabel = item.merchantId === "rakuten" ? "楽天で見る" : "外部リンク";
+        const showRakutenImage = primaryCandidate?.imageSource === "rakuten_api" && primaryCandidate.imageUrl && isAllowedRakutenImageUrl(primaryCandidate.imageUrl);
         return (
-          <Card key={item.id} className="grid grid-cols-[96px_1fr] gap-4 md:grid-cols-[128px_1fr]">
-            {primaryCandidate?.imageSource === "rakuten_api" && primaryCandidate.imageUrl ? (
-              <div>
-                {/* eslint-disable-next-line @next/next/no-img-element -- 楽天APIが返した許可済み画像URLだけを保存済み候補として表示する。 */}
-                <img src={primaryCandidate.imageUrl} alt="" className="h-24 w-24 rounded-lg border border-line object-cover md:h-32 md:w-32" />
-                <p className="mt-1 text-[11px] text-muted" title="楽天APIから返された画像URLのみ表示しています。">画像: 楽天API</p>
+          <Card key={item.id} className="flex flex-col gap-4 lg:flex-row">
+            {/* 画像 */}
+            <div className="shrink-0">
+              {showRakutenImage && primaryCandidate?.imageUrl ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- 楽天公式APIの許可ホスト画像URLのみを描画時に再検証して表示する。 */}
+                  <img src={primaryCandidate.imageUrl} alt="" className="h-28 w-28 rounded-lg border border-line object-cover" />
+                  <p className="mt-1 text-[11px] text-muted" title="楽天APIから返された画像URLのみ表示しています。">画像: 楽天API</p>
+                </>
+              ) : (
+                <Image src={imagePath(item.placeholderKey)} alt="" width={112} height={112} className="h-28 w-28 rounded-lg border border-line bg-surface" />
+              )}
+            </div>
+
+            {editingId === item.id ? (
+              <div className="min-w-0 flex-1 space-y-2">
+                <input
+                  className="w-full rounded-md border border-line px-3 py-2 text-sm"
+                  value={draftTitle}
+                  onChange={(event) => setDraftTitle(event.target.value)}
+                  aria-label="商品名を編集"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full rounded-md border border-line px-3 py-2 text-sm"
+                  value={draftDesiredPrice}
+                  onChange={(event) => setDraftDesiredPrice(event.target.value)}
+                  placeholder="希望価格"
+                />
+                <textarea
+                  className="min-h-20 w-full rounded-md border border-line px-3 py-2 text-sm"
+                  value={draftActualPriceMemo}
+                  onChange={(event) => setDraftActualPriceMemo(event.target.value)}
+                  placeholder="実質価格メモ"
+                />
+                <div className="space-y-3 rounded-lg border border-line bg-surface p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold">候補と内訳</p>
+                    <Button type="button" variant="secondary" className="min-h-8 px-3 py-1" onClick={() => setDraftCandidates((current) => [...current, createCandidateDraft(merchants[0]?.merchantId ?? item.merchantId)])}>候補追加</Button>
+                  </div>
+                  {draftCandidates.map((candidate, index) => (
+                    <div key={candidate.id} className="rounded-md border border-line bg-white p-3">
+                      <div className="grid gap-2 md:grid-cols-[120px_1fr_auto]">
+                        <select aria-label="編集候補EC" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.merchantId} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, merchantId: event.target.value } : entry))}>
+                          {merchants.map((entry) => <option key={entry.merchantId} value={entry.merchantId}>{entry.name}</option>)}
+                        </select>
+                        <input aria-label="編集候補URL" type="url" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.originalUrl} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, originalUrl: event.target.value } : entry))} placeholder="https://..." />
+                        <Button type="button" variant="ghost" className="min-h-8 px-2" onClick={() => setDraftCandidates((current) => current.filter((_, currentIndex) => currentIndex !== index))} aria-label="候補を削除"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                      <div className="mt-2 grid gap-2 md:grid-cols-5">
+                        <input aria-label="編集商品価格" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.productPrice} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, productPrice: event.target.value } : entry))} placeholder="商品価格" />
+                        <input aria-label="編集送料" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.shippingFee} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, shippingFee: event.target.value } : entry))} placeholder="送料" />
+                        <input aria-label="編集クーポン値引き" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.couponDiscount} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, couponDiscount: event.target.value } : entry))} placeholder="クーポン" />
+                        <input aria-label="編集付与ポイント" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.grantedPoints} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, grantedPoints: event.target.value } : entry))} placeholder="付与pt" />
+                        <input aria-label="編集ポイント換算率" type="number" min="0" step="0.1" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.pointRate} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, pointRate: event.target.value } : entry))} placeholder="換算率" />
+                      </div>
+                      <textarea aria-label="編集候補メモ" className="mt-2 min-h-16 w-full rounded-md border border-line px-3 py-2 text-sm" value={candidate.priceMemo} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, priceMemo: event.target.value } : entry))} placeholder="候補メモ" />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => void saveEdit(item)}>保存</Button>
+                  <Button variant="secondary" onClick={() => setEditingId(null)}>キャンセル</Button>
+                </div>
               </div>
             ) : (
-              <Image src={imagePath(item.placeholderKey)} alt="" width={96} height={96} className="rounded-lg border border-line bg-surface" />
-            )}
-            <div className="min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  {editingId === item.id ? (
-                    <input
-                      className="w-full rounded-md border border-line px-3 py-2 text-sm"
-                      value={draftTitle}
-                      onChange={(event) => setDraftTitle(event.target.value)}
-                    />
-                  ) : (
-                    <p className="font-semibold text-ink">{item.title}</p>
-                  )}
-                  <p className="mt-1 text-xs text-muted">{merchant?.name ?? item.merchantId}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
+              <>
+                {/* 情報 */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge merchant={merchant} />
                     <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${saleStatus.className}`}>{saleStatus.label}</span>
                     {priceStatus ? <span className="inline-flex rounded-full border border-line bg-surface px-2 py-1 text-xs font-semibold text-muted">{priceStatus}</span> : null}
                   </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" className="min-h-8 px-2" onClick={() => startEdit(item)} aria-label="編集">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" className="min-h-8 px-2" onClick={() => void remove(item)} aria-label="削除">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              {editingId === item.id ? (
-                <div className="mt-3 space-y-2">
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-full rounded-md border border-line px-3 py-2 text-sm"
-                    value={draftDesiredPrice}
-                    onChange={(event) => setDraftDesiredPrice(event.target.value)}
-                    placeholder="希望価格"
-                  />
-                  <textarea
-                    className="min-h-20 w-full rounded-md border border-line px-3 py-2 text-sm"
-                    value={draftActualPriceMemo}
-                    onChange={(event) => setDraftActualPriceMemo(event.target.value)}
-                    placeholder="実質価格メモ"
-                  />
-                  <div className="space-y-3 rounded-lg border border-line bg-surface p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold">候補と内訳</p>
-                      <Button type="button" variant="secondary" className="min-h-8 px-3 py-1" onClick={() => setDraftCandidates((current) => [...current, createCandidateDraft(merchants[0]?.merchantId ?? item.merchantId)])}>候補追加</Button>
-                    </div>
-                    {draftCandidates.map((candidate, index) => (
-                      <div key={candidate.id} className="rounded-md border border-line bg-white p-3">
-                        <div className="grid gap-2 md:grid-cols-[120px_1fr_auto]">
-                          <select aria-label="編集候補EC" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.merchantId} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, merchantId: event.target.value } : entry))}>
-                            {merchants.map((entry) => <option key={entry.merchantId} value={entry.merchantId}>{entry.name}</option>)}
-                          </select>
-                          <input aria-label="編集候補URL" type="url" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.originalUrl} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, originalUrl: event.target.value } : entry))} placeholder="https://..." />
-                          <Button type="button" variant="ghost" className="min-h-8 px-2" onClick={() => setDraftCandidates((current) => current.filter((_, currentIndex) => currentIndex !== index))} aria-label="候補を削除"><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                        <div className="mt-2 grid gap-2 md:grid-cols-5">
-                          <input aria-label="編集商品価格" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.productPrice} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, productPrice: event.target.value } : entry))} placeholder="商品価格" />
-                          <input aria-label="編集送料" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.shippingFee} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, shippingFee: event.target.value } : entry))} placeholder="送料" />
-                          <input aria-label="編集クーポン値引き" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.couponDiscount} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, couponDiscount: event.target.value } : entry))} placeholder="クーポン" />
-                          <input aria-label="編集付与ポイント" type="number" min="0" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.grantedPoints} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, grantedPoints: event.target.value } : entry))} placeholder="付与pt" />
-                          <input aria-label="編集ポイント換算率" type="number" min="0" step="0.1" className="rounded-md border border-line px-3 py-2 text-sm" value={candidate.pointRate} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, pointRate: event.target.value } : entry))} placeholder="換算率" />
-                        </div>
-                        <textarea aria-label="編集候補メモ" className="mt-2 min-h-16 w-full rounded-md border border-line px-3 py-2 text-sm" value={candidate.priceMemo} onChange={(event) => setDraftCandidates((current) => current.map((entry, currentIndex) => currentIndex === index ? { ...entry, priceMemo: event.target.value } : entry))} placeholder="候補メモ" />
-                      </div>
-                    ))}
+                  <p className="mt-2 font-semibold text-ink">{item.title}</p>
+                  <div className="mt-3 grid gap-x-6 gap-y-1 text-sm text-muted sm:grid-cols-2">
+                    <p>希望価格: <span className="font-semibold text-ink">{formatPrice(item.desiredPrice)}</span></p>
+                    <p>計算済み実質価格: <span className="font-semibold text-ink">{primaryEffectivePrice === null ? "未計算" : formatPrice(primaryEffectivePrice)}</span></p>
+                    <p>最終確認日: {item.lastCheckedAt ? new Date(item.lastCheckedAt).toLocaleDateString("ja-JP") : "未確認"}</p>
+                    {relatedSale ? <p>関連セール: {relatedSale.title}</p> : null}
                   </div>
-                  <div className="flex gap-2">
-                    <Button onClick={() => void saveEdit(item)}>保存</Button>
-                    <Button variant="secondary" onClick={() => setEditingId(null)}>キャンセル</Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <p className="mt-3 text-sm text-muted">希望価格: {formatPrice(item.desiredPrice)}</p>
-                  <p className="mt-1 text-sm text-muted">計算済み実質価格: {primaryEffectivePrice === null ? "未計算" : formatPrice(primaryEffectivePrice)}</p>
-                  <div className="mt-2 rounded-md border border-line bg-surface px-3 py-2">
+                  <div className="mt-3 rounded-md border border-line bg-surface px-3 py-2">
                     {buyTimingScore.status === "scored" ? (
                       <p className="text-sm font-semibold text-ink">買い時スコア: {buyTimingScore.score} / 100（{buyTimingScore.label}）</p>
                     ) : (
@@ -440,8 +438,6 @@ export function WishlistList() {
                     )}
                     <p className="mt-1 text-xs leading-5 text-muted">{buyTimingScore.reasons[0]}</p>
                   </div>
-                  <p className="mt-1 text-sm text-muted">最終確認日: {item.lastCheckedAt ? new Date(item.lastCheckedAt).toLocaleDateString("ja-JP") : "未確認"}</p>
-                  {relatedSale ? <p className="mt-1 text-sm text-muted">関連セール: {relatedSale.title}（{new Date(relatedSale.startAt).toLocaleDateString("ja-JP")}）</p> : null}
                   {item.actualPriceMemo ? <p className="mt-2 text-sm leading-6 text-muted">前回メモ: {item.actualPriceMemo}</p> : null}
                   {item.referenceLinks?.length ? (
                     <p className="mt-2 inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-xs font-semibold text-muted">
@@ -454,21 +450,6 @@ export function WishlistList() {
                       差額目安: {merchantName(merchants, diff.lowerMerchantId)}が{formatPrice(diff.amount)}低い見込み（手入力値）
                     </p>
                   ) : null}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <a href={item.productUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-accent hover:bg-surface">
-                      <ExternalLink className="h-4 w-4" />
-                      {linkLabel}
-                    </a>
-                    {item.targetSaleEventId ? (
-                      <Link href={`/sales/${item.targetSaleEventId}`} className="inline-flex min-h-10 items-center rounded-md border border-line px-3 py-2 text-sm font-semibold hover:bg-surface">
-                        関連セール
-                      </Link>
-                    ) : null}
-                    <Button variant="secondary" onClick={() => shareCompare(item, primaryEffectivePrice)} className="gap-2">
-                      <Share2 className="h-4 w-4" />
-                      比較メモをXで共有
-                    </Button>
-                  </div>
                   {item.referenceLinks?.length ? (
                     <details className="mt-3 text-sm">
                       <summary className="cursor-pointer font-semibold text-accent">参考リンクと元URL</summary>
@@ -486,14 +467,51 @@ export function WishlistList() {
                       </div>
                     </details>
                   ) : null}
-                </>
-              )}
-            </div>
+                </div>
+
+                {/* 操作導線 */}
+                <div className="flex flex-wrap gap-2 lg:w-52 lg:flex-col">
+                  <a href={item.productUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-btn bg-accent px-3 py-2 text-sm font-semibold text-white transition hover:bg-accentDark lg:flex-none lg:w-full">
+                    <ExternalLink className="h-4 w-4" />
+                    {linkLabel}
+                  </a>
+                  <Button variant="secondary" className="flex-1 gap-2 lg:flex-none lg:w-full" onClick={() => startEdit(item)}>
+                    <Pencil className="h-4 w-4" />
+                    価格・メモを更新
+                  </Button>
+                  {item.targetSaleEventId ? (
+                    <Link href={`/sales/${item.targetSaleEventId}`} className="inline-flex min-h-10 flex-1 items-center justify-center rounded-btn border border-line bg-white px-3 py-2 text-sm font-semibold text-ink transition hover:bg-surface lg:flex-none lg:w-full">
+                      関連セール
+                    </Link>
+                  ) : null}
+                  <Link href="/settings/notifications" className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-btn border border-line bg-white px-3 py-2 text-sm font-semibold text-ink transition hover:bg-surface lg:flex-none lg:w-full">
+                    <Bell className="h-4 w-4" />
+                    通知設定
+                  </Link>
+                  <Button variant="secondary" className="flex-1 gap-2 lg:flex-none lg:w-full" onClick={() => shareCompare(item, primaryEffectivePrice)}>
+                    <Share2 className="h-4 w-4" />
+                    Xで共有
+                  </Button>
+                  <Button variant="danger" className="flex-1 gap-2 lg:flex-none lg:w-full" onClick={() => void remove(item)}>
+                    <Trash2 className="h-4 w-4" />
+                    削除
+                  </Button>
+                </div>
+              </>
+            )}
           </Card>
         );
       })}
       {toast ? <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} /> : null}
       </div>
     </div>
+  );
+}
+
+function Badge({ merchant }: { merchant: Merchant | undefined }) {
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getMerchantToneClass(merchant)}`}>
+      {merchant?.name ?? "EC未設定"}
+    </span>
   );
 }

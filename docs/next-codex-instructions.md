@@ -1,6 +1,16 @@
 # 次の実装プロンプトでCodexに注意してほしいこと
 
-最終更新: 2026-05-29
+最終更新: 2026-05-30
+
+## 最新の引き継ぎ先
+
+2026-05-30 時点の次回作業は **v2.5 UI 修正**。以下を優先して参照する。
+
+- 統合実装指示書: [handoffs/v2.5-ui-remediation-handoff.md](./handoffs/v2.5-ui-remediation-handoff.md)
+- Claude Code 用貼り付けプロンプト:
+  [prompts/claude-code-v2.5-ui-remediation.md](./prompts/claude-code-v2.5-ui-remediation.md)
+
+以下の v1 MVP 向けメモは履歴として残す。v2.5 UI 修正では、上記の統合実装指示書を優先する。
 
 次に Codex へ「v1 MVP の実装」を依頼する際、特に以下を明示・厳守させる。
 全体像は [implementation-plan.md](./implementation-plan.md)、構成は [architecture.md](./architecture.md)。

@@ -18,7 +18,10 @@ import { getMerchantToneClass } from "@/lib/utils/merchant";
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
 export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: string }) {
-  const [month, setMonth] = useState(() => new Date(2026, 5, 1));
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [events, setEvents] = useState<SaleEvent[]>([]);
   const [activeMerchantIds, setActiveMerchantIds] = useState<string[]>([]);
@@ -88,6 +91,16 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
           <p className="min-w-36 text-center text-lg font-bold">{month.getFullYear()}年 {month.getMonth() + 1}月</p>
           <Button variant="secondary" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label="翌月">
             <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            className="text-accent"
+            onClick={() => {
+              const now = new Date();
+              setMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+            }}
+          >
+            今月
           </Button>
         </div>
         <div className="flex flex-wrap gap-2">

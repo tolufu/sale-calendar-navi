@@ -4,6 +4,7 @@ import type {
   ProductSearchResult,
   RakutenProductSearchProvider
 } from "@/lib/product-search/types";
+import { sanitizeRakutenImageUrl } from "@/lib/utils/rakuten-image";
 
 const RAKUTEN_SEARCH_ENDPOINT = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706";
 const DEFAULT_LIMIT = 5;
@@ -31,17 +32,7 @@ type RakutenApiResponse = {
 
 function firstImageUrl(item: RakutenApiItem): string | null {
   const imageUrl = item.mediumImageUrls?.[0]?.imageUrl ?? item.smallImageUrls?.[0]?.imageUrl ?? null;
-  if (!imageUrl) {
-    return null;
-  }
-
-  try {
-    const parsed = new URL(imageUrl);
-    const isRakutenImageHost = parsed.hostname === "image.rakuten.co.jp" || parsed.hostname.endsWith(".image.rakuten.co.jp");
-    return ["http:", "https:"].includes(parsed.protocol) && isRakutenImageHost ? parsed.toString() : null;
-  } catch {
-    return null;
-  }
+  return sanitizeRakutenImageUrl(imageUrl);
 }
 
 function searchFailureResult(): ProductSearchResult {
