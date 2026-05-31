@@ -156,11 +156,11 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
                 <button
                   key={day.dateKey}
                   type="button"
-                  className="min-h-28 border-b border-r border-line p-2 text-left align-top hover:bg-surface sm:min-h-36"
+                  className="flex min-h-28 flex-col items-start border-b border-r border-line p-2 text-left hover:bg-surface sm:min-h-36"
                   onClick={() => day.events.length > 0 && setSelectedDayEvents(day.events)}
                 >
                   <span className={day.inMonth ? "text-sm font-semibold text-ink" : "text-sm text-zinc-400"}>{day.date.getDate()}</span>
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 w-full space-y-1">
                     {visibleEvents.map((event) => (
                       <Link
                         key={event.id}
