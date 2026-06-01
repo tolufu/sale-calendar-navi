@@ -8,7 +8,7 @@ describe("RakutenIchibaProductSearchProvider", () => {
   });
 
   it("APIキー未設定時はモック候補を返し、手入力継続メッセージを返す", async () => {
-    const provider = new RakutenIchibaProductSearchProvider(undefined, undefined);
+    const provider = new RakutenIchibaProductSearchProvider(undefined, undefined, undefined);
 
     const result = await provider.search({ query: "掃除機" });
 
@@ -20,6 +20,30 @@ describe("RakutenIchibaProductSearchProvider", () => {
       price: null
     });
     expect(result.message).toContain("手入力");
+  });
+
+  it("applicationIdのみでaccessKey未設定ならモック候補を返す", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new RakutenIchibaProductSearchProvider("app-id", undefined);
+
+    const result = await provider.search({ query: "掃除機" });
+
+    expect(result.configured).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("リクエストURLにapplicationIdとaccessKeyの両方を含める", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ Items: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
+
+    await provider.search({ query: "テスト" });
+
+    const requestUrl = fetchMock.mock.calls[0][0] as URL;
+    expect(requestUrl.origin).toBe("https://openapi.rakuten.co.jp");
+    expect(requestUrl.searchParams.get("applicationId")).toBe("app-id");
+    expect(requestUrl.searchParams.get("accessKey")).toBe("access-key");
   });
 
   it("楽天APIレスポンスの許可画像とaffiliateUrlを候補へ変換する", async () => {
@@ -42,7 +66,7 @@ describe("RakutenIchibaProductSearchProvider", () => {
       })
     });
     vi.stubGlobal("fetch", fetchMock);
-    const provider = new RakutenIchibaProductSearchProvider("app-id", "affiliate-id");
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key", "affiliate-id");
 
     const result = await provider.search({ query: "テスト" });
 
@@ -59,7 +83,7 @@ describe("RakutenIchibaProductSearchProvider", () => {
 
   it("楽天APIがエラーを返した場合は空候補と手入力継続メッセージを返す", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
-    const provider = new RakutenIchibaProductSearchProvider("app-id");
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
 
     const result = await provider.search({ query: "テスト" });
 
@@ -72,7 +96,7 @@ describe("RakutenIchibaProductSearchProvider", () => {
 
   it("楽天APIへのfetchが失敗した場合は空候補と手入力継続メッセージを返す", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network error")));
-    const provider = new RakutenIchibaProductSearchProvider("app-id");
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
 
     const result = await provider.search({ query: "テスト" });
 
@@ -88,7 +112,7 @@ describe("RakutenIchibaProductSearchProvider", () => {
     vi.stubGlobal("fetch", vi.fn((_url: URL, init: RequestInit) => new Promise((_resolve, reject) => {
       init.signal?.addEventListener("abort", () => reject(new Error("aborted")));
     })));
-    const provider = new RakutenIchibaProductSearchProvider("app-id");
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
 
     const resultPromise = provider.search({ query: "テスト" });
     await vi.advanceTimersByTimeAsync(8000);
@@ -107,7 +131,7 @@ describe("RakutenIchibaProductSearchProvider", () => {
         throw new Error("parse error");
       }
     }));
-    const provider = new RakutenIchibaProductSearchProvider("app-id");
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
 
     const result = await provider.search({ query: "テスト" });
 
@@ -133,7 +157,7 @@ describe("RakutenIchibaProductSearchProvider", () => {
         ]
       })
     }));
-    const provider = new RakutenIchibaProductSearchProvider("app-id");
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
 
     const result = await provider.search({ query: "テスト" });
 

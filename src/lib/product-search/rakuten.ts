@@ -6,7 +6,8 @@ import type {
 } from "@/lib/product-search/types";
 import { sanitizeRakutenImageUrl } from "@/lib/utils/rakuten-image";
 
-const RAKUTEN_SEARCH_ENDPOINT = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706";
+// 2026-02-10の楽天ウェブサービス刷新で新ドメイン/新パスに移行。applicationIdとaccessKeyの両方が必須。
+const RAKUTEN_SEARCH_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601";
 const DEFAULT_LIMIT = 5;
 const SEARCH_TIMEOUT_MS = 8000;
 const SEARCH_FAILURE_MESSAGE = "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。";
@@ -112,12 +113,14 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
 
   constructor(
     private readonly applicationId = process.env.RAKUTEN_APPLICATION_ID,
+    private readonly accessKey = process.env.RAKUTEN_ACCESS_KEY,
     private readonly affiliateId = process.env.RAKUTEN_AFFILIATE_ID
   ) {}
 
   async search(input: ProductSearchInput): Promise<ProductSearchResult> {
     const keyword = extractRakutenKeyword(input.query);
-    if (!this.applicationId) {
+    // 刷新後の楽天APIは applicationId と accessKey の両方が必須。片方でも欠ければ未設定扱い。
+    if (!this.applicationId || !this.accessKey) {
       return mockSearch(input);
     }
     if (!keyword) {
@@ -132,6 +135,7 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
     const url = new URL(RAKUTEN_SEARCH_ENDPOINT);
     url.searchParams.set("format", "json");
     url.searchParams.set("applicationId", this.applicationId);
+    url.searchParams.set("accessKey", this.accessKey);
     url.searchParams.set("keyword", keyword);
     url.searchParams.set("hits", String(limit));
     url.searchParams.set("imageFlag", "1");
