@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { getRepositories } from "@/lib/repositories";
 import type { Merchant, SaleEvent } from "@/lib/repositories/types";
 import { buildCalendarDays, sortSalesForDisplay } from "@/lib/utils/calendar";
-import { formatDate, formatDateTime } from "@/lib/utils/date";
+import { formatDate, formatDateTime, isEstimatedSale, toDateKey } from "@/lib/utils/date";
 import { getMerchantToneClass } from "@/lib/utils/merchant";
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -61,12 +61,19 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
     [activeMerchantIds, events, merchants]
   );
   const days = useMemo(() => buildCalendarDays(month, filteredEvents), [filteredEvents, month]);
+  const monthEvents = useMemo(
+    () =>
+      filteredEvents.filter((event) => {
+        const start = new Date(event.startAt);
+        return start.getFullYear() === month.getFullYear() && start.getMonth() === month.getMonth();
+      }),
+    [filteredEvents, month]
+  );
   const merchantById = useMemo(() => new Map(merchants.map((merchant) => [merchant.merchantId, merchant])), [merchants]);
+  const todayKey = toDateKey(new Date());
 
-  function toggleMerchant(merchantId: string) {
-    setActiveMerchantIds((current) =>
-      current.includes(merchantId) ? current.filter((id) => id !== merchantId) : [...current, merchantId]
-    );
+  function selectMerchant(merchantId: string) {
+    setActiveMerchantIds([merchantId]);
   }
 
   function showAllMerchants() {
@@ -110,8 +117,8 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
           {merchants.map((merchant) => (
             <Button
               key={merchant.merchantId}
-              variant={activeMerchantIds.includes(merchant.merchantId) ? "primary" : "secondary"}
-              onClick={() => toggleMerchant(merchant.merchantId)}
+              variant={activeMerchantIds.length === 1 && activeMerchantIds[0] === merchant.merchantId ? "primary" : "secondary"}
+              onClick={() => selectMerchant(merchant.merchantId)}
             >
               {merchant.name}
             </Button>
@@ -123,11 +130,12 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
         </div>
       </Card>
 
-      {filteredEvents.length === 0 ? (
-        <EmptyState title="表示するセール予定がありません" description="ECフィルターを変更するか、別の月を確認してください。" />
-      ) : viewMode === "list" ? (
+      {viewMode === "list" ? (
+        monthEvents.length === 0 ? (
+        <EmptyState title="この月のセール予定はありません" description="ECフィルターを変更するか、別の月を確認してください。" />
+      ) : (
         <div className="grid gap-3">
-          {filteredEvents.map((event) => {
+          {monthEvents.map((event) => {
             const merchant = merchants.find((entry) => entry.merchantId === event.merchantId);
             return (
               <Link key={event.id} href={`/sales/${event.id}`} className="block">
@@ -135,6 +143,9 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge>{merchant?.name ?? event.merchantId}</Badge>
                     <Badge className={getMerchantToneClass(merchant)}>{event.saleType}</Badge>
+                    {isEstimatedSale(event.confidence) ? (
+                      <Badge className="border-amber-300 bg-amber-50 text-amber-700">予測</Badge>
+                    ) : null}
                   </div>
                   <h2 className="mt-3 text-lg font-bold">{event.title}</h2>
                   <p className="mt-2 text-sm text-muted">{formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}</p>
@@ -143,41 +154,59 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
             );
           })}
         </div>
+        )
       ) : (
-        <div className="overflow-hidden rounded-lg border border-line bg-white">
-          <div className="grid grid-cols-7 border-b border-line bg-surface text-center text-xs font-semibold text-muted">
-            {weekdays.map((day) => <div key={day} className="py-2">{day}</div>)}
+        <>
+          <div className="overflow-hidden rounded-lg border border-line bg-white">
+            <div className="grid grid-cols-7 border-b border-line bg-surface text-center text-xs font-semibold text-muted">
+              {weekdays.map((day) => <div key={day} className="py-2">{day}</div>)}
+            </div>
+            <div className="grid grid-cols-7">
+              {days.map((day) => {
+                const visibleEvents = day.events.slice(0, 2);
+                const hiddenCount = Math.max(day.events.length - 2, 0);
+                const isToday = day.dateKey === todayKey;
+                return (
+                  <button
+                    key={day.dateKey}
+                    type="button"
+                    aria-current={isToday ? "date" : undefined}
+                    className={`flex min-h-28 flex-col items-start border-b border-r border-line p-2 text-left hover:bg-surface sm:min-h-36 ${isToday ? "bg-accent/10 ring-2 ring-inset ring-accent" : ""}`}
+                    onClick={() => day.events.length > 0 && setSelectedDayEvents(day.events)}
+                  >
+                    <span
+                      className={
+                        isToday
+                          ? "flex h-6 w-6 items-center justify-center rounded-full bg-accent text-sm font-bold text-white"
+                          : day.inMonth
+                            ? "text-sm font-semibold text-ink"
+                            : "text-sm text-zinc-400"
+                      }
+                    >
+                      {day.date.getDate()}
+                    </span>
+                    <div className="mt-2 w-full space-y-1">
+                      {visibleEvents.map((event) => (
+                        <Link
+                          key={event.id}
+                          href={`/sales/${event.id}`}
+                          title={isEstimatedSale(event.confidence) ? `${event.title}（予測日程）` : event.title}
+                          className={`block rounded-md border px-2 py-1 text-[11px] font-semibold leading-4 ${getMerchantToneClass(merchantById.get(event.merchantId))} ${isEstimatedSale(event.confidence) ? "border-dashed" : ""}`}
+                          onClick={(clickEvent) => clickEvent.stopPropagation()}
+                        >
+                          {isEstimatedSale(event.confidence) ? <span aria-hidden className="mr-0.5">◇</span> : null}
+                          {event.title}
+                        </Link>
+                      ))}
+                      {hiddenCount > 0 ? <Badge className="bg-ink text-white">+{hiddenCount}</Badge> : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="grid grid-cols-7">
-            {days.map((day) => {
-              const visibleEvents = day.events.slice(0, 2);
-              const hiddenCount = Math.max(day.events.length - 2, 0);
-              return (
-                <button
-                  key={day.dateKey}
-                  type="button"
-                  className="flex min-h-28 flex-col items-start border-b border-r border-line p-2 text-left hover:bg-surface sm:min-h-36"
-                  onClick={() => day.events.length > 0 && setSelectedDayEvents(day.events)}
-                >
-                  <span className={day.inMonth ? "text-sm font-semibold text-ink" : "text-sm text-zinc-400"}>{day.date.getDate()}</span>
-                  <div className="mt-2 w-full space-y-1">
-                    {visibleEvents.map((event) => (
-                      <Link
-                        key={event.id}
-                        href={`/sales/${event.id}`}
-                        className={`block rounded-md border px-2 py-1 text-[11px] font-semibold leading-4 ${getMerchantToneClass(merchantById.get(event.merchantId))}`}
-                        onClick={(clickEvent) => clickEvent.stopPropagation()}
-                      >
-                        {event.title}
-                      </Link>
-                    ))}
-                    {hiddenCount > 0 ? <Badge className="bg-ink text-white">+{hiddenCount}</Badge> : null}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+          <p className="text-xs leading-5 text-muted">◇・破線枠は過去の傾向にもとづく「予測日程」です。確定情報は各セールの詳細や公式サイトでご確認ください。</p>
+        </>
       )}
 
       {selectedDayEvents ? (
@@ -192,7 +221,12 @@ export function SaleCalendar({ initialMerchantSlug }: { initialMerchantSlug?: st
             <div className="mt-4 space-y-3">
               {selectedDayEvents.map((event) => (
                 <Link key={event.id} href={`/sales/${event.id}`} className="block rounded-lg border border-line p-4 hover:bg-surface">
-                  <p className="font-semibold text-ink">{event.title}</p>
+                  <p className="flex items-center gap-2 font-semibold text-ink">
+                    {event.title}
+                    {isEstimatedSale(event.confidence) ? (
+                      <Badge className="border-amber-300 bg-amber-50 text-amber-700">予測</Badge>
+                    ) : null}
+                  </p>
                   <p className="mt-1 text-sm text-muted">{formatDateTime(event.startAt)} 開始</p>
                 </Link>
               ))}

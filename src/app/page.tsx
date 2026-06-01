@@ -18,7 +18,11 @@ export const metadata = buildPageMetadata({
 });
 
 export default function HomePage() {
-  const featuredSales = saleEvents.slice(0, 3);
+  const now = Date.now();
+  const featuredSales = [...saleEvents]
+    .filter((sale) => new Date(sale.endAt).getTime() >= now)
+    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+    .slice(0, 3);
   const featuredArticles = articles.slice(0, 3);
   const merchantById = new Map(merchants.map((merchant) => [merchant.merchantId, merchant]));
 
@@ -76,7 +80,7 @@ export default function HomePage() {
       <section className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-ink">今月の注目セール</h2>
+            <h2 className="text-xl font-bold text-ink">直近の注目セール</h2>
             <Link href="/calendar" className="inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline">
               すべて見る
               <ChevronRight className="h-4 w-4" aria-hidden />

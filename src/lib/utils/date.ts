@@ -1,3 +1,5 @@
+import type { SaleEventConfidence } from "@/lib/repositories/types";
+
 export function formatDate(date: string | Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
     month: "numeric",
@@ -22,6 +24,10 @@ export function toDateKey(date: string | Date): string {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+export function isEstimatedSale(confidence?: SaleEventConfidence): boolean {
+  return confidence === "estimated";
 }
 
 export type SaleStatus = "upcoming" | "active" | "ended";

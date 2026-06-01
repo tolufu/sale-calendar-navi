@@ -25,6 +25,11 @@ export type Merchant = {
   sortOrder: number;
 };
 
+// 日程の確度。"confirmed" は公式発表済み/開催実績のある日程、
+// "estimated" は過去の傾向からの予測・推定日程（画面上で「予測」と明示する）。
+// 省略時は "confirmed" 扱い。
+export type SaleEventConfidence = "confirmed" | "estimated";
+
 export type SaleEvent = {
   id: string;
   merchantId: string;
@@ -36,6 +41,9 @@ export type SaleEvent = {
   sourceUrl: string | null;
   strategyMemo?: string;
   relatedSaleEventIds?: string[];
+  confidence?: SaleEventConfidence;
+  // 予測根拠の補足（例: "過去の楽天スーパーSALE開催月の傾向から推定"）。
+  confidenceNote?: string;
 };
 
 export type ProductGroup = {

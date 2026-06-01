@@ -15,7 +15,7 @@ import { articles } from "@/data/articles";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
 import type { Merchant, SaleEvent, WishItem } from "@/lib/repositories/types";
-import { formatDate, formatDateTime, formatSaleStatus, getSaleStatus, type SaleStatus } from "@/lib/utils/date";
+import { formatDate, formatDateTime, formatSaleStatus, getSaleStatus, isEstimatedSale, type SaleStatus } from "@/lib/utils/date";
 import { getMerchantToneClass } from "@/lib/utils/merchant";
 import { formatPrice } from "@/lib/utils/price";
 import { buildSaleShareText, buildXIntentUrl } from "@/lib/utils/share";
@@ -119,12 +119,22 @@ export function SaleDetail({ saleId }: { saleId: string }) {
               <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusToneClass(status)}`}>
                 {formatSaleStatus(status)}
               </span>
+              {isEstimatedSale(sale.confidence) ? (
+                <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                  予測日程
+                </span>
+              ) : null}
             </div>
             <h1 className="mt-4 text-2xl font-bold leading-tight text-ink sm:text-3xl">{sale.title}</h1>
             <p className="mt-3 inline-flex items-center gap-2 text-sm text-muted">
               <CalendarRange className="h-4 w-4 shrink-0 text-accent" aria-hidden />
               {formatDateTime(sale.startAt)} 〜 {formatDateTime(sale.endAt)}
             </p>
+            {isEstimatedSale(sale.confidence) ? (
+              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                この日程は過去の傾向にもとづく予測です（公式発表前）。{sale.confidenceNote ? `${sale.confidenceNote}。` : ""}実際の開催日は公式サイトで確認してください。
+              </p>
+            ) : null}
             <p className="mt-4 leading-7 text-ink">{sale.description}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               {sale.sourceUrl ? (
