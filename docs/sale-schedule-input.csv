@@ -1,0 +1,81 @@
+﻿merchantId,title,saleType,startAt,endAt,confidence,sourceUrl,note
+# merchantId: rakuten / amazon / yahoo-shopping,,,,,,,
+"# startAt,endAt: JST。形式 YYYY-MM-DD HH:mm（25:59等は翌日01:59に換算）",,,,,,,
+# confidence: confirmed（開催実績あり・確定）/ estimated（予測・公式未発表）,,,,,,,
+# 大型・季節セール中心。対象者限定・商品単位・店舗別/先着クーポンは原則除外。sourceUrlは各行の根拠。,,,,,,,
+rakuten,楽天市場 初売り福袋特集2023,new-year,2023-01-01 00:00,2023-01-16 09:59,confirmed,https://prtimes.jp/main/html/rd/p/000001880.000005889.html,公式発表。1/1〜1/3は超ポイントバック祭も同時開催。
+amazon,Amazon 初売り 2023,new-year,2023-01-03 09:00,2023-01-07 23:59,confirmed,https://prtimes.jp/main/html/rd/p/000001620.000004612.html,Amazon Japan発表。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2023年3月,super-paypay,2023-03-01 00:00,2023-03-21 23:59,confirmed,https://about.paypay.ne.jp/pr/20230213/01/,最終期間は2023-03-16〜2023-03-21。
+amazon,Amazon 新生活SALE 2023,spring,2023-03-02 09:00,2023-03-06 23:59,confirmed,https://prtimes.jp/main/html/rd/p/000001635.000004612.html,春の大型セール。
+rakuten,楽天スーパーSALE 2023年3月,super-sale,2023-03-04 20:00,2023-03-11 01:59,confirmed,https://keiba.rakuten.co.jp/event/supersale2303,大型買いまわりセール。
+rakuten,楽天スーパーSALE 2023年6月,super-sale,2023-06-04 20:00,2023-06-11 01:59,confirmed,https://www.rakuteneagles.jp/news/detail/202300378994.html,大型買いまわりセール。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2023年7月,super-paypay,2023-07-01 00:00,2023-07-31 23:59,confirmed,https://about.paypay.ne.jp/pr/20230613/01/,最終期間は2023-07-29〜2023-07-31。
+amazon,Amazon プライムデー 2023,prime-day,2023-07-11 00:00,2023-07-12 23:59,confirmed,https://www.aboutamazon.jp/news/amazon-prime/primeday2023,プライム会員向け大型セール。
+rakuten,楽天スーパーSALE 2023年9月,super-sale,2023-09-04 20:00,2023-09-11 01:59,confirmed,https://keiba.rakuten.co.jp/event/supersale2309,大型買いまわりセール。
+amazon,Amazon プライム感謝祭 2023,prime-appreciation,2023-10-14 00:00,2023-10-15 23:59,confirmed,https://www.aboutamazon.jp/news/amazon-prime/primeappreciationsale2023,プライム会員向け大型セール。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2023年11月,super-paypay,2023-11-01 00:00,2023-11-28 23:59,confirmed,https://about.paypay.ne.jp/pr/20231026/01/,最終期間は2023-11-26〜2023-11-28。
+rakuten,楽天ブラックフライデー 2023,black-friday,2023-11-21 20:00,2023-11-27 01:59,confirmed,https://www.watch.impress.co.jp/docs/news/1548370.html,年末商戦の大型セール。
+amazon,Amazon ブラックフライデー 2023,black-friday,2023-11-24 00:00,2023-12-01 23:59,confirmed,https://www.aboutamazon.jp/news/guide/six-key-points-to-make-your-shopping-at-amazon-black-friday-more-affordable-and-convenient,年末商戦の大型セール。
+yahoo-shopping,Yahoo!ショッピング ヤフービッグボーナス 2023年12月,big-bonus,2023-12-04 00:00,2023-12-19 23:59,confirmed,https://www.lycorp.co.jp/ja/news/release/001020/,LINEヤフー公式発表。年内最後の大型イベント。
+rakuten,楽天スーパーSALE 2023年12月,super-sale,2023-12-04 20:00,2023-12-11 01:59,confirmed,https://keiba.rakuten.co.jp/event/supersale2312,大型買いまわりセール。
+rakuten,楽天大感謝祭 2023,year-end-thanks,2023-12-19 20:00,2023-12-26 01:59,confirmed,https://appllio.com/rakuten-special-thanks-festival-2025,年末大型買いまわり。二次情報で過去実績確認。
+rakuten,楽天市場 初売り／新春ポイントアップ祭 2024,new-year,2024-01-01 00:00,2024-01-03 23:59,confirmed,https://event.rakuten.co.jp/newyear/campaign/pointup/,新春ポイントアップ祭相当。公式キャンペーンページは年次で更新される可能性あり。
+amazon,Amazon 初売り 2024,new-year,2024-01-03 09:00,2024-01-07 23:59,confirmed,https://prtimes.jp/main/html/rd/p/000001806.000004612.html,Amazon Japan発表。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2024年3月,super-paypay,2024-03-01 00:00,2024-03-18 01:59,confirmed,https://about.paypay.ne.jp/pr/20240208/01/,最終2日間＋2時間を含む。
+amazon,Amazon 新生活SALE 2024,spring,2024-03-01 09:00,2024-03-05 23:59,confirmed,https://prtimes.jp/main/html/rd/p/000001822.000004612.html,春の大型セール。
+rakuten,楽天スーパーSALE 2024年3月,super-sale,2024-03-04 20:00,2024-03-11 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,楽天公式読み物の開催履歴に基づく。
+yahoo-shopping,Yahoo!ショッピング ヤフービッグボーナス 2024年5月,big-bonus,2024-05-01 00:00,2024-05-20 01:59,confirmed,https://wallet.yahoo.co.jp/notice/archives/20240501_01.html,原典の25:59表記を翌日01:59に換算。
+rakuten,楽天スーパーSALE 2024年6月,super-sale,2024-06-04 20:00,2024-06-11 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,楽天公式読み物の開催履歴に基づく。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2024年7月,super-paypay,2024-07-01 00:00,2024-07-22 01:59,confirmed,https://wallet.yahoo.co.jp/notice/archives/20240701_01.html,原典の25:59表記を翌日01:59に換算。
+amazon,Amazon プライムデー 2024,prime-day,2024-07-16 00:00,2024-07-17 23:59,confirmed,https://www.aboutamazon.jp/news/amazon-prime/primeday2024,プライム会員向け大型セール。
+yahoo-shopping,Yahoo!ショッピング 25周年ヤフービッグボーナス 2024年9月,big-bonus,2024-09-01 00:00,2024-09-24 01:59,confirmed,https://wallet.yahoo.co.jp/notice/archives/20240902_01.html,原典の25:59表記を翌日01:59に換算。
+rakuten,楽天スーパーSALE 2024年9月,super-sale,2024-09-04 20:00,2024-09-11 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,楽天公式読み物の開催履歴に基づく。
+amazon,Amazon プライム感謝祭 2024 先行セール,prime-appreciation-preview,2024-10-17 00:00,2024-10-18 23:59,confirmed,https://www.aboutamazon.jp/news/amazon-prime/prime-appreciation-sale-2024,本セール前の先行セール。
+amazon,Amazon プライム感謝祭 2024,prime-appreciation,2024-10-19 00:00,2024-10-20 23:59,confirmed,https://www.aboutamazon.jp/news/amazon-prime/prime-appreciation-sale-2024,プライム会員向け大型セール。
+rakuten,楽天ブラックフライデー 2024,black-friday,2024-11-21 20:00,2024-11-27 01:59,confirmed,https://game.watch.impress.co.jp/docs/news/1640297.html,年末商戦の大型セール。
+amazon,Amazon ブラックフライデー 2024,black-friday,2024-11-29 00:00,2024-12-06 23:59,confirmed,https://www.aboutamazon.jp/news/retail/black-friday-illumination-by-amazon-2024,年末商戦の大型セール。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2024年12月,super-paypay,2024-12-02 12:00,2024-12-23 01:59,confirmed,https://wallet.yahoo.co.jp/notice/archives/20241202_01.html,原典の25:59表記を翌日01:59に換算。
+rakuten,楽天スーパーSALE 2024年12月,super-sale,2024-12-04 20:00,2024-12-11 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,楽天公式読み物の開催履歴に基づく。
+rakuten,楽天大感謝祭 2024,year-end-thanks,2024-12-19 20:00,2024-12-26 01:59,confirmed,https://appllio.com/rakuten-special-thanks-festival-2025,年末大型買いまわり。二次情報で過去実績確認。
+rakuten,Rakuten初売り／新春ポイントアップ祭 2025,new-year,2025-01-01 00:00,2025-01-03 23:59,confirmed,https://corp.rakuten.co.jp/news/update/2024/1226_02.html,楽天公式発表。
+amazon,Amazon 初売り 2025,new-year,2025-01-03 09:00,2025-01-07 23:59,confirmed,https://www.aboutamazon.jp/news/retail/amazon-2025-new-year-sale,About Amazon公式。
+amazon,Amazon スマイルSALE 新生活 2025,spring,2025-02-28 09:00,2025-03-04 23:59,confirmed,https://www.aboutamazon.jp/news/retail/smile-sale-shinseikatsu-2025,春の大型セール。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2025年3月,super-paypay,2025-03-03 12:00,2025-03-24 01:59,confirmed,https://about.paypay.ne.jp/pr/20250217/01/,事前期間と最終2日間＋2時間を含む。
+rakuten,楽天スーパーSALE 2025年3月,super-sale,2025-03-04 20:00,2025-03-11 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,楽天公式読み物の開催履歴に基づく。
+amazon,Amazon スマイルSALE 新生活 FINAL 2025,spring-final,2025-03-28 09:00,2025-04-01 23:59,confirmed,https://www.aboutamazon.jp/news/retail/smile-sale-shinseikatsu-final-2025,春の新生活セール第2弾。
+yahoo-shopping,Yahoo!ショッピング ヤフービッグボーナス 2025年5月,big-bonus,2025-05-01 12:00,2025-05-19 01:59,confirmed,https://wallet.yahoo.co.jp/notice/archives/20250501_01.html,原典の25:59表記を翌日01:59に換算。
+rakuten,楽天スーパーSALE 2025年6月,super-sale,2025-06-04 20:00,2025-06-11 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,楽天公式読み物の開催履歴に基づく。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2025年7月,super-paypay,2025-07-01 12:00,2025-07-28 01:59,confirmed,https://www.lycorp.co.jp/ja/news/release/018017/,事前期間と最終2日間＋2時間を含む。
+amazon,Amazon プライムデー 2025 先行セール,prime-day-preview,2025-07-08 00:00,2025-07-10 23:59,confirmed,https://www.aboutamazon.jp/news/amazon-prime/prime-day-2025,本セール前の先行セール。
+amazon,Amazon プライムデー 2025,prime-day,2025-07-11 00:00,2025-07-14 23:59,confirmed,https://www.aboutamazon.jp/news/amazon-prime/prime-day-2025,プライム会員向け大型セール。
+yahoo-shopping,Yahoo!ショッピング ヤフービッグボーナス 2025年9月,big-bonus,2025-09-01 12:00,2025-09-22 01:59,confirmed,https://prtimes.jp/main/html/rd/p/000001350.000129774.html,PR TIMES/LINEヤフー発表。最終2日間＋2時間を含む。
+rakuten,楽天スーパーSALE 2025年9月,super-sale,2025-09-04 20:00,2025-09-11 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,楽天公式読み物の開催履歴に基づく。
+amazon,Amazon プライム感謝祭 2025 先行セール,prime-appreciation-preview,2025-10-04 00:00,2025-10-06 23:59,confirmed,https://www.aboutamazon.jp/news/amazon-prime/prime-appreciation-sale-2025,本セール前の先行セール。
+amazon,Amazon プライム感謝祭 2025,prime-appreciation,2025-10-07 00:00,2025-10-10 23:59,confirmed,https://www.aboutamazon.jp/news/amazon-prime/prime-appreciation-sale-2025,プライム会員向け大型セール。
+rakuten,楽天ブラックフライデー 2025,black-friday,2025-11-20 20:00,2025-11-27 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2024/rakuten-blackfriday/,楽天公式読み物の開催履歴に基づく。
+amazon,Amazon ブラックフライデー 2025,black-friday,2025-11-24 00:00,2025-12-01 23:59,confirmed,https://www.aboutamazon.jp/news/retail/amazon-black-friday-2025,年末商戦の大型セール。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2025年12月,super-paypay,2025-12-01 12:00,2025-12-16 01:59,confirmed,https://wallet.yahoo.co.jp/notice/archives/20251201_01.html,原典の25:59表記を翌日01:59に換算。
+rakuten,楽天スーパーSALE 2025年12月,super-sale,2025-12-04 20:00,2025-12-11 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,楽天公式読み物の開催履歴に基づく。
+rakuten,楽天大感謝祭 2025,year-end-thanks,2025-12-19 20:00,2025-12-26 01:59,confirmed,https://appllio.com/rakuten-special-thanks-festival-2025,年末大型買いまわり。二次情報で開催実績確認。
+rakuten,Rakuten初売り／新春ポイントアップ祭 2026,new-year,2026-01-01 00:00,2026-01-03 23:59,confirmed,https://corp.rakuten.co.jp/news/update/2025/1226_01.html,楽天公式発表。
+amazon,Amazon 初売り 2026,new-year,2026-01-03 09:00,2026-01-07 23:59,confirmed,https://www.aboutamazon.jp/news/retail/amazon-2026-new-year-sale,About Amazon公式。
+amazon,Amazon 新生活セール 2026 先行セール,spring-preview,2026-03-03 00:00,2026-03-05 23:59,confirmed,https://www.aboutamazon.jp/news/retail/amazon-newlife-sale-2026,本セール前の先行セール。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2026年3月,super-paypay,2026-03-03 12:00,2026-03-23 01:59,confirmed,https://wallet.yahoo.co.jp/notice/archives/20260303_01.html,原典の25:59表記を翌日01:59に換算。
+rakuten,楽天スーパーSALE 2026年3月,super-sale,2026-03-04 20:00,2026-03-11 01:59,confirmed,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,楽天公式読み物の開催履歴に基づく。
+amazon,Amazon 新生活セール 2026,spring,2026-03-06 00:00,2026-03-09 23:59,confirmed,https://www.aboutamazon.jp/news/retail/amazon-newlife-sale-2026,春の大型セール。
+yahoo-shopping,Yahoo!ショッピング 爆買ウルトラSALE 2026年5月,bakugai-ultra-sale,2026-05-30 00:00,2026-06-02 01:59,confirmed,https://www.lycorp.co.jp/ja/news/release/020404/,初夏大型販促。原典の25:59表記を翌日01:59に換算。
+rakuten,楽天スーパーSALE 2026年6月,super-sale,2026-06-04 20:00,2026-06-11 01:59,confirmed,https://game.watch.impress.co.jp/docs/news/2111559.html,開催予定の報道確認。
+amazon,Amazon プライムデー 2026,prime-day,2026-07-10 00:00,2026-07-13 23:59,estimated,https://www.aboutamazon.jp/news/amazon-prime,公式未発表。Amazon公式ニュースで2026年7月開催のみ確認、具体日は2025年実績から推定。
+yahoo-shopping,Yahoo!ショッピング 2026年7月大型企画（超PayPay祭系）,super-paypay,2026-07-10 00:00,2026-07-31 23:59,estimated,https://shopping.yahoo.co.jp/promotion/sale/ppf/,公式ページで7/10〜大型企画告知のみ確認。終了日・正式名称は未発表のため推定。
+rakuten,楽天スーパーSALE 2026年9月,super-sale,2026-09-04 20:00,2026-09-11 01:59,estimated,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,公式未発表。例年3/6/9/12月の4日20:00開始・11日01:59終了の傾向から推定。
+amazon,Amazon プライム感謝祭 2026,prime-appreciation,2026-10-06 00:00,2026-10-09 23:59,estimated,https://www.aboutamazon.jp/news/amazon-prime/prime-appreciation-sale-2025,公式未発表。2025年の4日間開催化をベースに推定。
+rakuten,楽天ブラックフライデー 2026,black-friday,2026-11-19 20:00,2026-11-27 01:59,estimated,https://event.rakuten.co.jp/family/story/article/2024/rakuten-blackfriday/,公式未発表。2023〜2025年実績から11月下旬開催として推定。
+amazon,Amazon ブラックフライデー 2026,black-friday,2026-11-27 00:00,2026-12-04 23:59,estimated,https://www.aboutamazon.jp/news/retail/amazon-black-friday-2025,公式未発表。ブラックフライデー当日開始・約8日間の近年実績から推定。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2026年12月,super-paypay,2026-12-01 12:00,2026-12-16 01:59,estimated,https://wallet.yahoo.co.jp/notice/archives/20251201_01.html,公式未発表。2025年12月実績をベースに推定。
+rakuten,楽天スーパーSALE 2026年12月,super-sale,2026-12-04 20:00,2026-12-11 01:59,estimated,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,公式未発表。例年の開催パターンから推定。
+rakuten,楽天大感謝祭 2026,year-end-thanks,2026-12-19 20:00,2026-12-26 01:59,estimated,https://appllio.com/rakuten-special-thanks-festival-2025,公式未発表。2023〜2025年実績から推定。
+rakuten,Rakuten初売り／新春ポイントアップ祭 2027,new-year,2027-01-01 00:00,2027-01-03 23:59,estimated,https://event.rakuten.co.jp/newyear/campaign/pointup/,公式未発表。2025〜2026年の新春ポイントアップ祭実績から推定。
+amazon,Amazon 初売り 2027,new-year,2027-01-03 09:00,2027-01-07 23:59,estimated,https://www.aboutamazon.jp/news/retail/amazon-2026-new-year-sale,公式未発表。毎年恒例の1/3開始パターンから推定。
+yahoo-shopping,Yahoo!ショッピング 超PayPay祭 2027年3月,super-paypay,2027-03-03 12:00,2027-03-23 01:59,estimated,https://wallet.yahoo.co.jp/notice/archives/20260303_01.html,公式未発表。2025〜2026年3月の春開催実績をベースに推定。
+rakuten,楽天スーパーSALE 2027年3月,super-sale,2027-03-04 20:00,2027-03-11 01:59,estimated,https://event.rakuten.co.jp/family/story/article/2021/rakuten-supersale-strategy/,公式未発表。例年の開催パターンから推定。
+amazon,Amazon 新生活セール 2027,spring,2027-03-05 00:00,2027-03-08 23:59,estimated,https://www.aboutamazon.jp/news/retail/amazon-newlife-sale-2026,公式未発表。2026年の3月第1金曜〜月曜開催を参考に推定。
