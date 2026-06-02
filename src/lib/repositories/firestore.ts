@@ -2,7 +2,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  documentId,
   getDoc,
   getDocs,
   limit,
@@ -16,9 +15,12 @@ import {
 import { articles } from "@/data/articles";
 import { merchants } from "@/data/merchants";
 import { saleEvents } from "@/data/sales";
+import { getPublishedArticles, sortArticles } from "@/lib/articles/article";
 import { getFirebaseClient } from "@/lib/firebase/client";
-import { createLocalRepositories } from "@/lib/repositories/local-storage";
+import { createLocalAdminRepositories, createLocalRepositories } from "@/lib/repositories/local-storage";
 import type {
+  AdminArticleRepository,
+  AdminRepositories,
   AppRepositories,
   Article,
   ArticleRepository,
@@ -77,13 +79,17 @@ function sortSales(events: SaleEvent[]): SaleEvent[] {
   return events.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
 }
 
-function sortArticles(items: Article[]): Article[] {
-  return items.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-}
-
 async function readCollection(db: Firestore, name: string): Promise<DocumentData[]> {
   const snapshot = await getDocs(collection(db, name));
   return snapshot.docs.map((item) => item.data());
+}
+
+async function hasCloudSeedData(db: Firestore): Promise<boolean> {
+  const [merchantSnapshot, saleSnapshot] = await Promise.all([
+    getDocs(query(collection(db, collections.merchants), limit(1))),
+    getDocs(query(collection(db, collections.sales), limit(1)))
+  ]);
+  return !merchantSnapshot.empty || !saleSnapshot.empty;
 }
 
 export class FirestoreMerchantRepository implements MerchantRepository {
@@ -227,22 +233,48 @@ export class FirestoreArticleRepository implements ArticleRepository {
       query(collection(this.db, collections.articles), where("status", "==", "published"))
     );
     const stored = snapshot.docs.map((item) => item.data() as Article);
-    return sortArticles(stored.length > 0 ? stored : [...articles]);
+    if (stored.length > 0 || await hasCloudSeedData(this.db)) {
+      return sortArticles(stored);
+    }
+    return sortArticles(getPublishedArticles(articles));
   }
 
   async get(slug: string): Promise<Article | null> {
-    const snapshot = await getDocs(
-      query(
-        collection(this.db, collections.articles),
-        where(documentId(), "==", slug),
-        where("status", "==", "published"),
-        limit(1)
-      )
-    );
-    if (!snapshot.empty) {
-      return snapshot.docs[0].data() as Article;
+    return (await this.list()).find((article) => article.slug === slug) ?? null;
+  }
+}
+
+export class FirestoreAdminArticleRepository implements AdminArticleRepository {
+  constructor(private readonly db: Firestore) {}
+
+  async listAll(): Promise<Article[]> {
+    const stored = (await readCollection(this.db, collections.articles)) as Article[];
+    if (stored.length > 0 || await hasCloudSeedData(this.db)) {
+      return sortArticles(stored);
     }
-    return articles.find((article) => article.slug === slug) ?? null;
+    return sortArticles(articles);
+  }
+
+  async get(slug: string): Promise<Article | null> {
+    const snapshot = await getDoc(doc(this.db, collections.articles, slug));
+    if (snapshot.exists()) {
+      return snapshot.data() as Article;
+    }
+
+    return await hasCloudSeedData(this.db) ? null : articles.find((article) => article.slug === slug) ?? null;
+  }
+
+  async upsert(article: Article): Promise<Article> {
+    const updated = {
+      ...article,
+      updatedAt: new Date().toISOString()
+    };
+    await setDoc(doc(this.db, collections.articles, article.slug), withoutUndefined(updated));
+    return updated;
+  }
+
+  async remove(slug: string): Promise<void> {
+    await deleteDoc(doc(this.db, collections.articles, slug));
   }
 }
 
@@ -259,6 +291,17 @@ export function createFirestoreRepositories(): AppRepositories {
     history: new FirestoreHistoryRepository(client.db),
     notifications: new FirestoreNotificationRepository(client.db),
     articles: new FirestoreArticleRepository(client.db)
+  };
+}
+
+export function createFirestoreAdminRepositories(): AdminRepositories {
+  const client = getFirebaseClient();
+  if (!client) {
+    return createLocalAdminRepositories();
+  }
+
+  return {
+    articles: new FirestoreAdminArticleRepository(client.db)
   };
 }
 

@@ -3,7 +3,10 @@
 import { articles } from "@/data/articles";
 import { merchants } from "@/data/merchants";
 import { saleEvents } from "@/data/sales";
+import { getPublishedArticles, sortArticles } from "@/lib/articles/article";
 import type {
+  AdminArticleRepository,
+  AdminRepositories,
   AppRepositories,
   Article,
   HistoryRepository,
@@ -47,8 +50,13 @@ function writeJson<T>(key: string, value: T): void {
 const keys = {
   wishlist: (userId: string) => `sale-calendar-navi:${userId}:wishlist`,
   history: (userId: string) => `sale-calendar-navi:${userId}:history`,
-  notification: (userId: string) => `sale-calendar-navi:${userId}:notification`
+  notification: (userId: string) => `sale-calendar-navi:${userId}:notification`,
+  articles: "sale-calendar-navi:admin:articles"
 };
+
+function readLocalArticles(): Article[] {
+  return readJson<Article[] | null>(keys.articles, null) ?? [...articles];
+}
 
 export class LocalMerchantRepository implements MerchantRepository {
   async list(): Promise<Merchant[]> {
@@ -163,11 +171,42 @@ export class LocalNotificationRepository implements NotificationRepository {
 
 export class LocalArticleRepository {
   async list(): Promise<Article[]> {
-    return [...articles].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    return sortArticles(getPublishedArticles(readLocalArticles()));
   }
 
   async get(slug: string): Promise<Article | null> {
-    return articles.find((article) => article.slug === slug) ?? null;
+    return getPublishedArticles(readLocalArticles()).find((article) => article.slug === slug) ?? null;
+  }
+}
+
+export class LocalAdminArticleRepository implements AdminArticleRepository {
+  async listAll(): Promise<Article[]> {
+    return sortArticles(readLocalArticles());
+  }
+
+  async get(slug: string): Promise<Article | null> {
+    return readLocalArticles().find((article) => article.slug === slug) ?? null;
+  }
+
+  async upsert(article: Article): Promise<Article> {
+    const stored = readLocalArticles();
+    const updated = {
+      ...article,
+      updatedAt: new Date().toISOString()
+    };
+    const index = stored.findIndex((item) => item.slug === article.slug);
+
+    if (index === -1) {
+      stored.push(updated);
+    } else {
+      stored[index] = updated;
+    }
+    writeJson(keys.articles, stored);
+    return updated;
+  }
+
+  async remove(slug: string): Promise<void> {
+    writeJson(keys.articles, readLocalArticles().filter((article) => article.slug !== slug));
   }
 }
 
@@ -179,5 +218,11 @@ export function createLocalRepositories(): AppRepositories {
     history: new LocalHistoryRepository(),
     notifications: new LocalNotificationRepository(),
     articles: new LocalArticleRepository()
+  };
+}
+
+export function createLocalAdminRepositories(): AdminRepositories {
+  return {
+    articles: new LocalAdminArticleRepository()
   };
 }

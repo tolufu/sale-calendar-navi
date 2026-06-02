@@ -156,6 +156,8 @@ export type NotificationSetting = {
   unsubscribeToken: string;
 };
 
+export type ArticleStatus = "draft" | "published";
+
 export type Article = {
   slug: string;
   title: string;
@@ -165,6 +167,8 @@ export type Article = {
   tags: string[];
   publishedAt: string;
   relatedSlugs?: string[];
+  status?: ArticleStatus;
+  updatedAt?: string;
 };
 
 export type LoadingState = "idle" | "loading" | "success" | "empty" | "error";
@@ -208,6 +212,13 @@ export interface ArticleRepository {
   get(slug: string): Promise<Article | null>;
 }
 
+export interface AdminArticleRepository {
+  listAll(): Promise<Article[]>;
+  get(slug: string): Promise<Article | null>;
+  upsert(article: Article): Promise<Article>;
+  remove(slug: string): Promise<void>;
+}
+
 export type AppRepositories = {
   merchants: MerchantRepository;
   sales: SaleRepository;
@@ -215,4 +226,8 @@ export type AppRepositories = {
   history: HistoryRepository;
   notifications: NotificationRepository;
   articles: ArticleRepository;
+};
+
+export type AdminRepositories = {
+  articles: AdminArticleRepository;
 };

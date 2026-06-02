@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { articles } from "@/data/articles";
 import { merchants } from "@/data/merchants";
 import { saleEvents } from "@/data/sales";
+import { getPublishedArticles } from "@/lib/articles/article";
 import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { buildPageMetadata } from "@/lib/utils/metadata";
 import { getMerchantToneClass } from "@/lib/utils/merchant";
@@ -23,7 +24,7 @@ export default function HomePage() {
     .filter((sale) => new Date(sale.endAt).getTime() >= now)
     .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
     .slice(0, 3);
-  const featuredArticles = articles.slice(0, 3);
+  const featuredArticles = getPublishedArticles(articles).slice(0, 3);
   const merchantById = new Map(merchants.map((merchant) => [merchant.merchantId, merchant]));
 
   return (

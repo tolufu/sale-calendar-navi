@@ -13,6 +13,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { articles } from "@/data/articles";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
+import { getPublishedArticles } from "@/lib/articles/article";
 import { getRepositories } from "@/lib/repositories";
 import type { Merchant, SaleEvent, WishItem } from "@/lib/repositories/types";
 import { formatDate, formatDateTime, formatSaleStatus, getSaleStatus, isEstimatedSale, type SaleStatus } from "@/lib/utils/date";
@@ -97,7 +98,7 @@ export function SaleDetail({ saleId }: { saleId: string }) {
     .split(/[。\n]/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const relatedArticles = articles.slice(0, 3);
+  const relatedArticles = getPublishedArticles(articles).slice(0, 3);
 
   return (
     <div className="space-y-5">

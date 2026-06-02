@@ -100,10 +100,10 @@ export function AdminDashboard() {
 
           <Card>
             <h2 className="text-lg font-bold text-ink">管理メニュー</h2>
-            <p className="mt-2 text-sm text-muted">記事管理とセール日程管理は後続フェーズで有効化します。</p>
+            <p className="mt-2 text-sm text-muted">記事の作成・編集・公開状態の管理と、後続フェーズで追加するセール日程管理を利用できます。</p>
             <div className="mt-4 flex flex-wrap gap-3">
-              <Link className="rounded-btn border border-line bg-surface px-4 py-2 text-sm font-semibold text-muted" href="/admin">
-                記事管理（準備中）
+              <Link className="rounded-btn bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accentDark" href="/admin/articles">
+                記事管理
               </Link>
               <Link className="rounded-btn border border-line bg-surface px-4 py-2 text-sm font-semibold text-muted" href="/admin">
                 セール日程管理（準備中）

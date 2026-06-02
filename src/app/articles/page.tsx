@@ -8,6 +8,9 @@ export const metadata = buildPageMetadata({
   path: "/articles"
 });
 
+// 管理コンソールの公開記事をサーバー描画へ反映するため、定期的に再生成する。
+export const revalidate = 300;
+
 export default function ArticlesPage() {
   return (
     <>

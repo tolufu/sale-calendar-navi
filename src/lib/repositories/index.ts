@@ -1,11 +1,12 @@
 "use client";
 
 import { getFirebaseClient } from "@/lib/firebase/client";
-import { createFirestoreRepositories } from "@/lib/repositories/firestore";
-import { createLocalRepositories } from "@/lib/repositories/local-storage";
-import type { AppRepositories } from "@/lib/repositories/types";
+import { createFirestoreAdminRepositories, createFirestoreRepositories } from "@/lib/repositories/firestore";
+import { createLocalAdminRepositories, createLocalRepositories } from "@/lib/repositories/local-storage";
+import type { AdminRepositories, AppRepositories } from "@/lib/repositories/types";
 
 let repositories: AppRepositories | null = null;
+let adminRepositories: AdminRepositories | null = null;
 
 export function getRepositories(): AppRepositories {
   if (repositories) {
@@ -14,4 +15,13 @@ export function getRepositories(): AppRepositories {
 
   repositories = getFirebaseClient() ? createFirestoreRepositories() : createLocalRepositories();
   return repositories;
+}
+
+export function getAdminRepositories(): AdminRepositories {
+  if (adminRepositories) {
+    return adminRepositories;
+  }
+
+  adminRepositories = getFirebaseClient() ? createFirestoreAdminRepositories() : createLocalAdminRepositories();
+  return adminRepositories;
 }
