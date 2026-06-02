@@ -12,7 +12,7 @@ export function sanitizeCsvCell(value: string): string {
   return CSV_FORMULA_PREFIX.test(trimmed) ? `'${trimmed}` : trimmed;
 }
 
-function parseHttpsUrl(value: string, label: string, errors: string[]): string | null {
+export function parseHttpsUrl(value: string, label: string, errors: string[]): string | null {
   if (!value) {
     return null;
   }

@@ -7,6 +7,7 @@ import { getPublishedArticles, sortArticles } from "@/lib/articles/article";
 import type {
   AdminArticleRepository,
   AdminRepositories,
+  AdminSaleRepository,
   AppRepositories,
   Article,
   HistoryRepository,
@@ -51,11 +52,20 @@ const keys = {
   wishlist: (userId: string) => `sale-calendar-navi:${userId}:wishlist`,
   history: (userId: string) => `sale-calendar-navi:${userId}:history`,
   notification: (userId: string) => `sale-calendar-navi:${userId}:notification`,
-  articles: "sale-calendar-navi:admin:articles"
+  articles: "sale-calendar-navi:admin:articles",
+  sales: "sale-calendar-navi:admin:sales"
 };
 
 function readLocalArticles(): Article[] {
   return readJson<Article[] | null>(keys.articles, null) ?? [...articles];
+}
+
+function readLocalSales(): SaleEvent[] {
+  return readJson<SaleEvent[] | null>(keys.sales, null) ?? [...saleEvents];
+}
+
+function sortSales(events: SaleEvent[]): SaleEvent[] {
+  return [...events].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
 }
 
 export class LocalMerchantRepository implements MerchantRepository {
@@ -70,11 +80,11 @@ export class LocalMerchantRepository implements MerchantRepository {
 
 export class LocalSaleRepository implements SaleRepository {
   async list(): Promise<SaleEvent[]> {
-    return [...saleEvents].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+    return sortSales(readLocalSales());
   }
 
   async get(id: string): Promise<SaleEvent | null> {
-    return saleEvents.find((event) => event.id === id) ?? null;
+    return readLocalSales().find((event) => event.id === id) ?? null;
   }
 }
 
@@ -210,6 +220,50 @@ export class LocalAdminArticleRepository implements AdminArticleRepository {
   }
 }
 
+export class LocalAdminSaleRepository implements AdminSaleRepository {
+  async listAll(): Promise<SaleEvent[]> {
+    return sortSales(readLocalSales());
+  }
+
+  async get(id: string): Promise<SaleEvent | null> {
+    return readLocalSales().find((event) => event.id === id) ?? null;
+  }
+
+  async upsert(event: SaleEvent): Promise<SaleEvent> {
+    const stored = readLocalSales();
+    const index = stored.findIndex((item) => item.id === event.id);
+    if (index === -1) {
+      stored.push(event);
+    } else {
+      stored[index] = event;
+    }
+    writeJson(keys.sales, stored);
+    return event;
+  }
+
+  async bulkUpsert(events: SaleEvent[]): Promise<{ created: number; updated: number }> {
+    const stored = readLocalSales();
+    const storedById = new Map(stored.map((event) => [event.id, event]));
+    let created = 0;
+    let updated = 0;
+
+    events.forEach((event) => {
+      if (storedById.has(event.id)) {
+        updated += 1;
+      } else {
+        created += 1;
+      }
+      storedById.set(event.id, event);
+    });
+    writeJson(keys.sales, [...storedById.values()]);
+    return { created, updated };
+  }
+
+  async remove(id: string): Promise<void> {
+    writeJson(keys.sales, readLocalSales().filter((event) => event.id !== id));
+  }
+}
+
 export function createLocalRepositories(): AppRepositories {
   return {
     merchants: new LocalMerchantRepository(),
@@ -223,6 +277,7 @@ export function createLocalRepositories(): AppRepositories {
 
 export function createLocalAdminRepositories(): AdminRepositories {
   return {
-    articles: new LocalAdminArticleRepository()
+    articles: new LocalAdminArticleRepository(),
+    sales: new LocalAdminSaleRepository()
   };
 }

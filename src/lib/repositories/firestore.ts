@@ -21,6 +21,7 @@ import { createLocalAdminRepositories, createLocalRepositories } from "@/lib/rep
 import type {
   AdminArticleRepository,
   AdminRepositories,
+  AdminSaleRepository,
   AppRepositories,
   Article,
   ArticleRepository,
@@ -115,7 +116,10 @@ export class FirestoreSaleRepository implements SaleRepository {
 
   async list(): Promise<SaleEvent[]> {
     const stored = (await readCollection(this.db, collections.sales)) as SaleEvent[];
-    return sortSales(stored.length > 0 ? stored : [...saleEvents]);
+    if (stored.length > 0 || await hasCloudSeedData(this.db)) {
+      return sortSales(stored);
+    }
+    return sortSales([...saleEvents]);
   }
 
   async get(id: string): Promise<SaleEvent | null> {
@@ -123,7 +127,7 @@ export class FirestoreSaleRepository implements SaleRepository {
     if (snapshot.exists()) {
       return snapshot.data() as SaleEvent;
     }
-    return saleEvents.find((event) => event.id === id) ?? null;
+    return await hasCloudSeedData(this.db) ? null : saleEvents.find((event) => event.id === id) ?? null;
   }
 }
 
@@ -278,6 +282,54 @@ export class FirestoreAdminArticleRepository implements AdminArticleRepository {
   }
 }
 
+export class FirestoreAdminSaleRepository implements AdminSaleRepository {
+  constructor(private readonly db: Firestore) {}
+
+  async listAll(): Promise<SaleEvent[]> {
+    const stored = (await readCollection(this.db, collections.sales)) as SaleEvent[];
+    if (stored.length > 0 || await hasCloudSeedData(this.db)) {
+      return sortSales(stored);
+    }
+    return sortSales([...saleEvents]);
+  }
+
+  async get(id: string): Promise<SaleEvent | null> {
+    const snapshot = await getDoc(doc(this.db, collections.sales, id));
+    if (snapshot.exists()) {
+      return snapshot.data() as SaleEvent;
+    }
+
+    return await hasCloudSeedData(this.db) ? null : saleEvents.find((event) => event.id === id) ?? null;
+  }
+
+  async upsert(event: SaleEvent): Promise<SaleEvent> {
+    await setDoc(doc(this.db, collections.sales, event.id), withoutUndefined(event));
+    return event;
+  }
+
+  async bulkUpsert(events: SaleEvent[]): Promise<{ created: number; updated: number }> {
+    // 取込対象のIDだけ存在確認し、コレクション全件読取を避ける。
+    const existing = await Promise.all(
+      events.map((event) => getDoc(doc(this.db, collections.sales, event.id)))
+    );
+    const created = existing.filter((snapshot) => !snapshot.exists()).length;
+    const updated = events.length - created;
+
+    for (let index = 0; index < events.length; index += 500) {
+      const batch = writeBatch(this.db);
+      events.slice(index, index + 500).forEach((event) => {
+        batch.set(doc(this.db, collections.sales, event.id), withoutUndefined(event));
+      });
+      await batch.commit();
+    }
+    return { created, updated };
+  }
+
+  async remove(id: string): Promise<void> {
+    await deleteDoc(doc(this.db, collections.sales, id));
+  }
+}
+
 export function createFirestoreRepositories(): AppRepositories {
   const client = getFirebaseClient();
   if (!client) {
@@ -301,7 +353,8 @@ export function createFirestoreAdminRepositories(): AdminRepositories {
   }
 
   return {
-    articles: new FirestoreAdminArticleRepository(client.db)
+    articles: new FirestoreAdminArticleRepository(client.db),
+    sales: new FirestoreAdminSaleRepository(client.db)
   };
 }
 

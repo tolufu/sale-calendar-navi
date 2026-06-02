@@ -219,6 +219,19 @@ export interface AdminArticleRepository {
   remove(slug: string): Promise<void>;
 }
 
+export type BulkUpsertResult = {
+  created: number;
+  updated: number;
+};
+
+export interface AdminSaleRepository {
+  listAll(): Promise<SaleEvent[]>;
+  get(id: string): Promise<SaleEvent | null>;
+  upsert(event: SaleEvent): Promise<SaleEvent>;
+  bulkUpsert(events: SaleEvent[]): Promise<BulkUpsertResult>;
+  remove(id: string): Promise<void>;
+}
+
 export type AppRepositories = {
   merchants: MerchantRepository;
   sales: SaleRepository;
@@ -230,4 +243,5 @@ export type AppRepositories = {
 
 export type AdminRepositories = {
   articles: AdminArticleRepository;
+  sales: AdminSaleRepository;
 };
