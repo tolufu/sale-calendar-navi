@@ -42,8 +42,38 @@ describe("RakutenIchibaProductSearchProvider", () => {
 
     const requestUrl = fetchMock.mock.calls[0][0] as URL;
     expect(requestUrl.origin).toBe("https://openapi.rakuten.co.jp");
+    expect(requestUrl.pathname).toContain("/IchibaItem/Search/20260401");
     expect(requestUrl.searchParams.get("applicationId")).toBe("app-id");
     expect(requestUrl.searchParams.get("accessKey")).toBe("access-key");
+  });
+
+  it("登録ドメイン(apiReferer)をOrigin/Refererヘッダで送る", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ Items: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new RakutenIchibaProductSearchProvider(
+      "app-id",
+      "access-key",
+      undefined,
+      "https://example.vercel.app/"
+    );
+
+    await provider.search({ query: "テスト" });
+
+    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+    expect(headers.Referer).toBe("https://example.vercel.app/");
+    expect(headers.Origin).toBe("https://example.vercel.app");
+  });
+
+  it("apiReferer未設定時はOrigin/Refererヘッダを付けない", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ Items: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key", undefined, undefined);
+
+    await provider.search({ query: "テスト" });
+
+    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+    expect(headers.Referer).toBeUndefined();
+    expect(headers.Origin).toBeUndefined();
   });
 
   it("楽天APIレスポンスの許可画像とaffiliateUrlを候補へ変換する", async () => {

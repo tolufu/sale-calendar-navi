@@ -6,19 +6,23 @@ import type {
 } from "@/lib/product-search/types";
 import { sanitizeRakutenImageUrl } from "@/lib/utils/rakuten-image";
 
-// 楽天ウェブサービス刷新後の Ichiba Item Search エンドポイント。applicationId と accessKey の両方が必須。
-// 2026-06 にライブ検証済み（実APIの挙動）:
-//   - 旧 app.rakuten.co.jp/.../20170706 は現役だが applicationId（数値）のみで accessKey 非対応。
-//   - 本エンドポイントは applicationId(UUID) + accessKey 必須。欠落時 400、accessKey不正時 403 を返す。
-//   - 不正パスは 404 "Resource not found" を返すため、本パスが正規リソースであることを確認済み。
-// この事実に反する「旧エンドポイントへの差し戻し」をしないこと。
-const RAKUTEN_SEARCH_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601";
+// 楽天ウェブサービス刷新後の Ichiba Item Search エンドポイント（現行版 20260401）。
+// 2026-06 にライブ検証済み（実認証情報でHTTP 200を確認）:
+//   - applicationId(UUID) + accessKey 両方必須（クエリで渡す）。
+//   - さらに Origin / Referer ヘッダが必須で、アプリ登録時の Application URL と一致が必要。
+//     不一致だと 403 HTTP_REFERRER_NOT_ALLOWED、欠落だと 403 REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING。
+//     ※ rakuten.co.jp 等の汎用値は不可。登録ドメインそのものを送ること。
+//   - 成功時レスポンスは旧API同様 `Items[].Item`（format=json）。
+//   - 旧 app.rakuten.co.jp/.../20170706 は現役だが数値applicationId専用。この新仕様から差し戻さないこと。
+const RAKUTEN_SEARCH_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401";
+// Origin/Referer に使う登録ドメイン。RAKUTEN_API_REFERER（推奨）→ NEXT_PUBLIC_SITE_URL の順で解決。
+const DEFAULT_API_REFERER = process.env.RAKUTEN_API_REFERER ?? process.env.NEXT_PUBLIC_SITE_URL;
 const DEFAULT_LIMIT = 5;
 const SEARCH_TIMEOUT_MS = 8000;
 const SEARCH_FAILURE_MESSAGE = "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。";
-// 認証系（applicationId / accessKey の誤り）は設定ミスのため、障害と区別したメッセージを返す。
+// 認証/参照元エラー（applicationId・accessKey・Origin/Refererの設定ミス）は障害と区別したメッセージを返す。
 const SEARCH_AUTH_FAILURE_MESSAGE =
-  "楽天APIの認証に失敗しました。サーバーの RAKUTEN_APPLICATION_ID / RAKUTEN_ACCESS_KEY の設定をご確認ください。";
+  "楽天APIの認証に失敗しました。サーバーの RAKUTEN_APPLICATION_ID / RAKUTEN_ACCESS_KEY と、登録ドメインを指す RAKUTEN_API_REFERER の設定をご確認ください。";
 
 type RakutenImage = {
   imageUrl?: string;
@@ -142,7 +146,9 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
   constructor(
     private readonly applicationId = process.env.RAKUTEN_APPLICATION_ID,
     private readonly accessKey = process.env.RAKUTEN_ACCESS_KEY,
-    private readonly affiliateId = process.env.RAKUTEN_AFFILIATE_ID
+    private readonly affiliateId = process.env.RAKUTEN_AFFILIATE_ID,
+    // アプリ登録時の Application URL。Origin/Referer ヘッダに使い、登録ドメインと一致させる。
+    private readonly apiReferer = DEFAULT_API_REFERER
   ) {}
 
   async search(input: ProductSearchInput): Promise<ProductSearchResult> {
@@ -174,9 +180,20 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
 
+    // 新ゲートウェイは Origin / Referer を必須とし、アプリ登録ドメインと一致しないと 403 を返す。
+    const headers: Record<string, string> = { accept: "application/json" };
+    if (this.apiReferer) {
+      headers.Referer = this.apiReferer;
+      try {
+        headers.Origin = new URL(this.apiReferer).origin;
+      } catch {
+        // RAKUTEN_API_REFERER がURLとして不正な場合は Origin を付けない（Referer のみ送る）。
+      }
+    }
+
     try {
       const response = await fetch(url, {
-        headers: { accept: "application/json" },
+        headers,
         next: { revalidate: 3600 },
         signal: controller.signal
       });
@@ -188,7 +205,7 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
         console.error(
           `[rakuten-search] upstream error: status=${response.status} message=${upstreamMessage ?? "(none)"}`
         );
-        // 401/403 は applicationId / accessKey の設定ミスなので、専用メッセージで案内する。
+        // 401/403 は applicationId / accessKey / Origin・Referer の設定ミスなので、専用メッセージで案内する。
         if (response.status === 401 || response.status === 403) {
           return searchFailureResult(SEARCH_AUTH_FAILURE_MESSAGE);
         }
