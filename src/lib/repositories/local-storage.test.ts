@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   LocalAdminArticleRepository,
+  LocalAdminMerchantRepository,
   LocalAdminSaleRepository,
   LocalArticleRepository,
+  LocalMerchantRepository,
   LocalSaleRepository
 } from "@/lib/repositories/local-storage";
-import type { Article, SaleEvent } from "@/lib/repositories/types";
+import type { Article, Merchant, SaleEvent } from "@/lib/repositories/types";
 
 describe("local article repositories", () => {
   beforeEach(() => {
@@ -42,6 +44,19 @@ describe("local article repositories", () => {
     await adminRepository.remove(created.id);
     expect(await publicRepository.get(created.id)).toBeNull();
   });
+
+  it("ECマスタの追加と無効化を公開読み取りへ反映する", async () => {
+    const adminRepository = new LocalAdminMerchantRepository();
+    const publicRepository = new LocalMerchantRepository();
+    const created = createMerchant({ merchantId: "local-shop", name: "ローカルEC" });
+
+    await adminRepository.upsert(created);
+    expect(await publicRepository.get(created.merchantId)).toEqual(created);
+    expect((await publicRepository.list()).some((merchant) => merchant.merchantId === created.merchantId)).toBe(true);
+
+    await adminRepository.upsert({ ...created, isActive: false });
+    expect((await publicRepository.list()).some((merchant) => merchant.merchantId === created.merchantId)).toBe(false);
+  });
 });
 
 function createArticle(patch: Partial<Article>): Article {
@@ -67,6 +82,28 @@ function createSale(patch: Partial<SaleEvent>): SaleEvent {
     endAt: "2026-06-10T16:59:00.000Z",
     description: "説明",
     sourceUrl: null,
+    ...patch
+  };
+}
+
+function createMerchant(patch: Partial<Merchant>): Merchant {
+  return {
+    merchantId: "merchant",
+    name: "EC",
+    type: "marketplace",
+    colorToken: "merchant",
+    placeholderKey: "blue-box",
+    placeholderImageType: "generic",
+    urlHosts: ["example.com"],
+    affiliate: null,
+    affiliateProvider: null,
+    supportsAffiliate: false,
+    supportsApi: false,
+    supportsPriceAutoFetch: false,
+    supportsSaleCalendar: true,
+    integrationStatus: "manual-only",
+    isActive: true,
+    sortOrder: 100,
     ...patch
   };
 }

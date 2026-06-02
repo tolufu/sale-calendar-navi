@@ -24,7 +24,7 @@ type DashboardState =
       };
     };
 
-export function AdminDashboard() {
+export function AdminDashboard({ csvImportEnabled }: { csvImportEnabled: boolean }) {
   const router = useRouter();
   const [state, setState] = useState<DashboardState>({ status: "loading" });
   const [isSeeding, setIsSeeding] = useState(false);
@@ -100,7 +100,7 @@ export function AdminDashboard() {
 
           <Card>
             <h2 className="text-lg font-bold text-ink">管理メニュー</h2>
-            <p className="mt-2 text-sm text-muted">記事とセール日程の作成・編集、手動CSVによるセール日程の一括登録を利用できます。</p>
+            <p className="mt-2 text-sm text-muted">記事、セール日程、ECマスタを管理できます。商品フィードCSVはフラグ有効時のみ検証画面を表示します。</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link className="rounded-btn bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accentDark" href="/admin/articles">
                 記事管理
@@ -108,6 +108,14 @@ export function AdminDashboard() {
               <Link className="rounded-btn bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accentDark" href="/admin/sales">
                 セール日程管理
               </Link>
+              <Link className="rounded-btn bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accentDark" href="/admin/merchants">
+                ECマスタ管理
+              </Link>
+              {csvImportEnabled ? (
+                <Link className="rounded-btn border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:bg-surface" href="/admin/import/products">
+                  商品フィードCSV検証
+                </Link>
+              ) : null}
             </div>
           </Card>
         </div>

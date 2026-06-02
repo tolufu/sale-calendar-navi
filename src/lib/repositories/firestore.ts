@@ -20,6 +20,7 @@ import { getFirebaseClient } from "@/lib/firebase/client";
 import { createLocalAdminRepositories, createLocalRepositories } from "@/lib/repositories/local-storage";
 import type {
   AdminArticleRepository,
+  AdminMerchantRepository,
   AdminRepositories,
   AdminSaleRepository,
   AppRepositories,
@@ -78,6 +79,10 @@ function withoutUndefined<T>(value: T): T {
 
 function sortSales(events: SaleEvent[]): SaleEvent[] {
   return events.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+}
+
+function sortMerchants(items: Merchant[]): Merchant[] {
+  return items.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 async function readCollection(db: Firestore, name: string): Promise<DocumentData[]> {
@@ -330,6 +335,28 @@ export class FirestoreAdminSaleRepository implements AdminSaleRepository {
   }
 }
 
+export class FirestoreAdminMerchantRepository implements AdminMerchantRepository {
+  constructor(private readonly db: Firestore) {}
+
+  async listAll(): Promise<Merchant[]> {
+    const stored = (await readCollection(this.db, collections.merchants)) as Merchant[];
+    return sortMerchants(stored.length > 0 ? stored : [...merchants]);
+  }
+
+  async get(merchantId: string): Promise<Merchant | null> {
+    const snapshot = await getDoc(doc(this.db, collections.merchants, merchantId));
+    if (snapshot.exists()) {
+      return snapshot.data() as Merchant;
+    }
+    return merchants.find((merchant) => merchant.merchantId === merchantId) ?? null;
+  }
+
+  async upsert(merchant: Merchant): Promise<Merchant> {
+    await setDoc(doc(this.db, collections.merchants, merchant.merchantId), withoutUndefined(merchant));
+    return merchant;
+  }
+}
+
 export function createFirestoreRepositories(): AppRepositories {
   const client = getFirebaseClient();
   if (!client) {
@@ -354,7 +381,8 @@ export function createFirestoreAdminRepositories(): AdminRepositories {
 
   return {
     articles: new FirestoreAdminArticleRepository(client.db),
-    sales: new FirestoreAdminSaleRepository(client.db)
+    sales: new FirestoreAdminSaleRepository(client.db),
+    merchants: new FirestoreAdminMerchantRepository(client.db)
   };
 }
 

@@ -232,6 +232,12 @@ export interface AdminSaleRepository {
   remove(id: string): Promise<void>;
 }
 
+export interface AdminMerchantRepository {
+  listAll(): Promise<Merchant[]>;
+  get(merchantId: string): Promise<Merchant | null>;
+  upsert(merchant: Merchant): Promise<Merchant>;
+}
+
 export type AppRepositories = {
   merchants: MerchantRepository;
   sales: SaleRepository;
@@ -244,4 +250,5 @@ export type AppRepositories = {
 export type AdminRepositories = {
   articles: AdminArticleRepository;
   sales: AdminSaleRepository;
+  merchants: AdminMerchantRepository;
 };
