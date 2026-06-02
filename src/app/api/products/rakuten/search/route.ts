@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { merchants } from "@/data/merchants";
+import { getMerchantForServer } from "@/lib/merchants/public-server";
 import { createRakutenProductSearchProvider } from "@/lib/product-search/rakuten";
 import { searchMerchantProducts } from "@/lib/providers/product-search";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q") ?? "";
-  const merchant = merchants.find((item) => item.merchantId === "rakuten");
+  const merchant = await getMerchantForServer("rakuten");
   if (!merchant) {
     return NextResponse.json({ candidates: [], message: "楽天の設定が見つかりません。" }, { status: 503 });
   }

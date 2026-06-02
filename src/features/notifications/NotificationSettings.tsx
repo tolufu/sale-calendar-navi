@@ -6,11 +6,10 @@ import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Toast } from "@/components/ui/Toast";
-import { merchants } from "@/data/merchants";
 import { saleEvents } from "@/data/sales";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
-import type { NotificationSetting, WishItem } from "@/lib/repositories/types";
+import type { Merchant, NotificationSetting, WishItem } from "@/lib/repositories/types";
 import { defaultNotificationSetting, isValidNotificationEmail } from "@/lib/services/notifications";
 import { generateUpcomingSaleReminders, reminderTimingLabels, type ReminderTiming } from "@/lib/utils/reminders";
 
@@ -18,6 +17,7 @@ export function NotificationSettings() {
   const [userId, setUserId] = useState("");
   const [setting, setSetting] = useState<NotificationSetting | null>(null);
   const [wishlist, setWishlist] = useState<WishItem[]>([]);
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -29,13 +29,15 @@ export function NotificationSettings() {
     try {
       const uid = await getAnonymousUserId();
       const repositories = getRepositories();
-      const [savedSetting, wishItems] = await Promise.all([
+      const [savedSetting, wishItems, merchantItems] = await Promise.all([
         repositories.notifications.get(uid),
-        repositories.wishlist.list(uid)
+        repositories.wishlist.list(uid),
+        repositories.merchants.list()
       ]);
       setUserId(uid);
       setSetting(savedSetting);
       setWishlist(wishItems);
+      setMerchants(merchantItems);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "通知設定を読み込めませんでした。");
     } finally {

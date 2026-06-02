@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { articles } from "@/data/articles";
-import { merchants } from "@/data/merchants";
 import { saleEvents } from "@/data/sales";
 import { getPublishedArticles } from "@/lib/articles/article";
+import { listMerchantsForServer } from "@/lib/merchants/public-server";
 import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { buildPageMetadata } from "@/lib/utils/metadata";
 import { getMerchantToneClass } from "@/lib/utils/merchant";
@@ -18,7 +18,11 @@ export const metadata = buildPageMetadata({
   path: "/"
 });
 
-export default function HomePage() {
+// 管理コンソールのECマスタ編集をサーバー描画へ反映するため、定期的に再生成する。
+export const revalidate = 300;
+
+export default async function HomePage() {
+  const merchants = await listMerchantsForServer();
   const now = Date.now();
   const featuredSales = [...saleEvents]
     .filter((sale) => new Date(sale.endAt).getTime() >= now)

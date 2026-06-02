@@ -5,9 +5,9 @@ import { AdPlaceholder } from "@/components/ui/AdPlaceholder";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { merchants } from "@/data/merchants";
 import { HistoryRecorder } from "@/features/history/HistoryRecorder";
 import { listPublishedArticlesForServer } from "@/lib/articles/public-server";
+import { listActiveMerchantsForServer } from "@/lib/merchants/public-server";
 import type { Article } from "@/lib/repositories/types";
 import { getMerchantIntegrationLabel } from "@/lib/merchants/capabilities";
 import { formatDate } from "@/lib/utils/date";
@@ -26,7 +26,10 @@ const tocItems = [
 ];
 
 export async function ArticleDetail({ slug }: { slug: string }) {
-  const articles = await listPublishedArticlesForServer();
+  const [articles, merchants] = await Promise.all([
+    listPublishedArticlesForServer(),
+    listActiveMerchantsForServer()
+  ]);
   const article = articles.find((item) => item.slug === slug);
   if (!article) {
     notFound();
