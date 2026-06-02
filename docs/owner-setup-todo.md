@@ -1,6 +1,6 @@
 # オーナー作業 TODO（APIキー設定・公開準備）
 
-最終更新: 2026-06-01
+最終更新: 2026-06-02
 
 このアプリは **未設定でも動作**します（Firebase 未設定なら自動的に LocalStorage 保存、楽天 API キー未設定なら検索はモック候補表示）。
 本番公開や実データ連携を行う際に、以下をご自身で設定してください。秘密情報は `.env.local` に置き、**リポジトリにコミットしない**でください（`.env.example` がテンプレートです）。
@@ -45,9 +45,27 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 - 取得元: Firebase コンソール → プロジェクト設定 → 「ウェブアプリ」の構成値。
 - これらは Web SDK の公開構成値（`NEXT_PUBLIC_` 前提）。**セキュリティは Firestore セキュリティルールで担保**してください。
 - やること: Firebase プロジェクト作成 → Authentication で「匿名」を有効化 → Firestore 作成 → `firestore.rules` をレビュー・デプロイ。
-- 管理者コンソールを使う場合: Authentication で「メール/パスワード」を有効化 → 管理者ユーザー作成 → Firebaseコンソールで `admins/{uid}` ドキュメントを手動作成 → `/admin/sign-in` からサインイン → Firestoreが空の場合のみ静的データを初期投入。
+- 管理者コンソールを使う場合: 下記「2.1 管理者コンソール `/admin` のセットアップ」を参照。
 
 > 重要: Firestoreリポジトリは接続済みですが、**復旧コードの実処理・通知メール実配信は別PR（未実装）**です。Firebase キーを入れると保存先は切替わりますが、既存localStorageデータの自動移行は行いません。
+
+### 2.1 管理者コンソール `/admin` のセットアップ
+記事・セール日程・ECマスタを画面から管理する管理者コンソールです。**Firebase 設定が必須**で、未設定だと `/admin` はガードにより「Firebaseが未設定」と表示されて入れません（local-only モードでは管理画面は使えません）。手順:
+
+1. **Cloud Firestore を有効化**: GCP コンソールで対象プロジェクトの **Cloud Firestore API を有効化**し、**Firestore データベースを作成**（ネイティブモード）。
+   - 未有効だと記事取得や管理者照合が失敗します（ビルド時にも `Cloud Firestore API has not been used...` のエラーが出ます）。
+2. **セキュリティルールをデプロイ**: リポジトリの `firestore.rules` をレビューのうえデプロイ（`firebase deploy --only firestore:rules` 等）。`admins/{uid}` の存在で管理者判定し、`articles/sales/merchants` の書込を管理者に限定します。
+3. **管理者ユーザーを作成**: Authentication で「メール/パスワード」を有効化し、管理者ユーザー（メール＋パスワード）を作成。Authentication → Users で **その UID をコピー**。
+4. **allowlist に登録**: Firestore に **`admins` コレクション → ドキュメントID = コピーした UID** を手動作成（中身は空でOK）。
+   - ルール上クライアントからは書込不可のため、**必ず Firebase コンソール**で作成します。
+5. **環境変数**: 「2. Firebase」の `NEXT_PUBLIC_FIREBASE_*` 6つを設定。
+6. **サインイン**: `/admin/sign-in` にメール/パスワードでサインイン → 成功で `/admin` へ。Firestore が空のときはダッシュボードから「静的データを初期投入（シード）」を一度だけ実行できます。
+
+補足:
+- 管理者を増やす場合は手順3〜4を繰り返します（UID ごとに `admins/{uid}` を追加）。
+- ECマスタは物理削除しません（参照切れ防止のため `isActive` 切替で無効化）。
+- **商品フィードCSV検証画面** `/admin/import/products` は機能フラグ `ENABLE_CSV_IMPORT=true` のときのみ表示されます（保存はせず検証のみ。外部商品画像URLは許可しません）。
+- 既知の制約: 公開画面の一部はビルド同梱の静的ECマスタを参照するため、ECマスタ編集が公開側へ即時反映されない箇所があります（公開側の配線は今後の対応）。
 
 ## 3. サイト URL / お問い合わせ ※公開時に推奨
 | 変数 | 用途 |

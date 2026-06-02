@@ -1,3 +1,10 @@
+import {
+  isExpectedCsvHeader,
+  isSkippedCsvRow,
+  parseCsvRows,
+  stripBom,
+  toCsvRecord
+} from "@/lib/import/csv/parse";
 import { parseHttpsUrl, sanitizeCsvCell } from "@/lib/import/csv/validate";
 import {
   SALE_SCHEDULE_CSV_COLUMNS,
@@ -15,24 +22,24 @@ export function validateSaleScheduleCsv(
   merchants: Merchant[],
   existingEvents: SaleEvent[] = []
 ): SaleScheduleCsvPreview {
-  const parsed = parseCsvRows(content.replace(/^\uFEFF/, ""));
+  const parsed = parseCsvRows(stripBom(content));
   if (parsed.error) {
     return createPreview([parsed.error], []);
   }
   const rows = parsed.rows;
-  const dataRows = rows.filter(({ cells }) => !isSkippedRow(cells));
+  const dataRows = rows.filter(({ cells }) => !isSkippedCsvRow(cells));
   if (dataRows.length === 0) {
     return createPreview(["CSVヘッダーがありません。"], []);
   }
 
   const [header, ...body] = dataRows;
   const normalizedHeader = header.cells.map((cell) => sanitizeCsvCell(cell));
-  if (!isExpectedHeader(normalizedHeader)) {
+  if (!isExpectedCsvHeader(normalizedHeader, SALE_SCHEDULE_CSV_COLUMNS)) {
     return createPreview([`CSVヘッダーは ${SALE_SCHEDULE_CSV_COLUMNS.join(",")} の順で指定してください。`], []);
   }
 
   const previewRows = body.map(({ lineNumber, cells }) => {
-    const row = toCsvRow(cells);
+    const row = toCsvRecord(cells, SALE_SCHEDULE_CSV_COLUMNS);
     return {
       lineNumber,
       row,
@@ -89,11 +96,6 @@ export function validateSaleScheduleCsvRow(
   };
   return { ok: true, value: event };
 }
-
-type ParsedCsvRow = {
-  lineNumber: number;
-  cells: string[];
-};
 
 function createPreview(fileErrors: string[], rows: SaleScheduleCsvPreviewRow[]): SaleScheduleCsvPreview {
   const validRows = rows.flatMap((row) => row.result.ok ? [row.result.value] : []);
@@ -152,75 +154,3 @@ function reconcileExistingIds(rows: SaleScheduleCsvPreviewRow[], existingEvents:
   });
 }
 
-function isSkippedRow(cells: string[]): boolean {
-  return cells.every((cell) => !cell.trim()) || cells[0]?.trim().startsWith("#");
-}
-
-function isExpectedHeader(header: string[]): boolean {
-  return header.length === SALE_SCHEDULE_CSV_COLUMNS.length
-    && SALE_SCHEDULE_CSV_COLUMNS.every((column, index) => header[index] === column);
-}
-
-function toCsvRow(cells: string[]): SaleScheduleCsvRow {
-  return Object.fromEntries(
-    SALE_SCHEDULE_CSV_COLUMNS.map((column, index) => [column, cells[index] ?? ""])
-  ) as SaleScheduleCsvRow;
-}
-
-function parseCsvRows(content: string): { rows: ParsedCsvRow[]; error?: string } {
-  const rows: ParsedCsvRow[] = [];
-  let cells: string[] = [];
-  let cell = "";
-  let inQuotes = false;
-  let rowLineNumber = 1;
-  let lineNumber = 1;
-
-  function pushCell() {
-    cells.push(cell);
-    cell = "";
-  }
-
-  function pushRow() {
-    pushCell();
-    rows.push({ lineNumber: rowLineNumber, cells });
-    cells = [];
-    rowLineNumber = lineNumber + 1;
-  }
-
-  for (let index = 0; index < content.length; index += 1) {
-    const character = content[index];
-    const next = content[index + 1];
-
-    if (character === "\"") {
-      if (inQuotes && next === "\"") {
-        cell += "\"";
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-    if (character === "," && !inQuotes) {
-      pushCell();
-      continue;
-    }
-    if ((character === "\n" || character === "\r") && !inQuotes) {
-      if (character === "\r" && next === "\n") {
-        index += 1;
-      }
-      pushRow();
-      lineNumber += 1;
-      continue;
-    }
-
-    cell += character;
-    if (character === "\n") {
-      lineNumber += 1;
-    }
-  }
-
-  if (cell || cells.length > 0) {
-    pushRow();
-  }
-  return inQuotes ? { rows: [], error: "CSVの引用符が閉じられていません。" } : { rows };
-}
