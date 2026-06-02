@@ -4,10 +4,9 @@ import { AdPlaceholder } from "@/components/ui/AdPlaceholder";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { articles } from "@/data/articles";
-import { saleEvents } from "@/data/sales";
-import { getPublishedArticles } from "@/lib/articles/article";
+import { listPublishedArticlesForServer } from "@/lib/articles/public-server";
 import { listMerchantsForServer } from "@/lib/merchants/public-server";
+import { listSalesForServer } from "@/lib/sales/public-server";
 import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { buildPageMetadata } from "@/lib/utils/metadata";
 import { getMerchantToneClass } from "@/lib/utils/merchant";
@@ -22,13 +21,17 @@ export const metadata = buildPageMetadata({
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const merchants = await listMerchantsForServer();
+  const [merchants, saleEvents, publishedArticles] = await Promise.all([
+    listMerchantsForServer(),
+    listSalesForServer(),
+    listPublishedArticlesForServer()
+  ]);
   const now = Date.now();
-  const featuredSales = [...saleEvents]
+  const featuredSales = saleEvents
     .filter((sale) => new Date(sale.endAt).getTime() >= now)
     .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
     .slice(0, 3);
-  const featuredArticles = getPublishedArticles(articles).slice(0, 3);
+  const featuredArticles = publishedArticles.slice(0, 3);
   const merchantById = new Map(merchants.map((merchant) => [merchant.merchantId, merchant]));
 
   return (
