@@ -82,7 +82,10 @@ describe("RakutenIchibaProductSearchProvider", () => {
   });
 
   it("楽天APIがエラーを返した場合は空候補と手入力継続メッセージを返す", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => "" })
+    );
     const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
 
     const result = await provider.search({ query: "テスト" });
@@ -92,6 +95,48 @@ describe("RakutenIchibaProductSearchProvider", () => {
       candidates: [],
       message: "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。"
     });
+  });
+
+  it("401/403は認証エラー専用メッセージを返す", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: async () => JSON.stringify({ errors: { errorCode: 403, errorMessage: "Invalid Access Key" } })
+      })
+    );
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
+
+    const result = await provider.search({ query: "テスト" });
+
+    expect(result.configured).toBe(true);
+    expect(result.candidates).toEqual([]);
+    expect(result.message).toContain("認証に失敗");
+    expect(result.message).toContain("RAKUTEN_ACCESS_KEY");
+  });
+
+  it("Itemラッパー無しの平坦なレスポンスでも候補へ変換する", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          Items: [
+            {
+              itemName: "平坦商品",
+              itemUrl: "https://item.rakuten.co.jp/shop/flat/",
+              itemPrice: 500
+            }
+          ]
+        })
+      })
+    );
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
+
+    const result = await provider.search({ query: "テスト" });
+
+    expect(result.candidates[0]).toMatchObject({ title: "平坦商品", price: 500 });
   });
 
   it("楽天APIへのfetchが失敗した場合は空候補と手入力継続メッセージを返す", async () => {
