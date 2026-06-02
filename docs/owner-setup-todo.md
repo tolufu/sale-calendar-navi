@@ -44,9 +44,10 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 ```
 - 取得元: Firebase コンソール → プロジェクト設定 → 「ウェブアプリ」の構成値。
 - これらは Web SDK の公開構成値（`NEXT_PUBLIC_` 前提）。**セキュリティは Firestore セキュリティルールで担保**してください。
-- やること: Firebase プロジェクト作成 → Authentication で「匿名」を有効化 → Firestore 作成 → セキュリティルール設定。
+- やること: Firebase プロジェクト作成 → Authentication で「匿名」を有効化 → Firestore 作成 → `firestore.rules` をレビュー・デプロイ。
+- 管理者コンソールを使う場合: Authentication で「メール/パスワード」を有効化 → 管理者ユーザー作成 → Firebaseコンソールで `admins/{uid}` ドキュメントを手動作成 → `/admin/sign-in` からサインイン → Firestoreが空の場合のみ静的データを初期投入。
 
-> 重要: 現状の Firestore リポジトリ実装・**復旧コードの実処理・通知メール実配信は別PR（未実装）**です。本UI修正では復旧コード画面は「クラウド保存対応後に利用可能」と明示する導線のみです。Firebase キーを入れると保存先は切替わりますが、復旧・通知の実機能は別PR完了まで動きません。
+> 重要: Firestoreリポジトリは接続済みですが、**復旧コードの実処理・通知メール実配信は別PR（未実装）**です。Firebase キーを入れると保存先は切替わりますが、既存localStorageデータの自動移行は行いません。
 
 ## 3. サイト URL / お問い合わせ ※公開時に推奨
 | 変数 | 用途 |
@@ -85,6 +86,6 @@ git push -u origin feat/v2.5-ui-remediation
 - `gh` CLI を使う場合は `gh auth login` 後に `gh pr create`。
 
 ## 7. 別PD（今後の開発タスク。コードは未実装）
-- Firestore の実保存・同期・LocalStorage からの移行
+- LocalStorage から Firestore へのデータ移行
 - 復旧コードによる実復旧処理
 - 通知メールの実配信・配信失敗処理

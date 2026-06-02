@@ -1,13 +1,18 @@
 # 次の実装プロンプトでCodexに注意してほしいこと
 
-最終更新: 2026-05-30
+最終更新: 2026-06-02
 
 ## 最新の引き継ぎ先
 
-2026-05-30 時点の次回作業は **v2.5 UI 修正**。以下を優先して参照する。
+2026-06-02 時点の次回作業は **v3 管理者コンソール**（記事投稿・セール日程CSVインポート・Firestore本接続・管理者認証）。以下を優先して参照する。
 
-- 統合実装指示書: [handoffs/v2.5-ui-remediation-handoff.md](./handoffs/v2.5-ui-remediation-handoff.md)
-- Claude Code 用貼り付けプロンプト:
+- 設計書: [v3-admin-console-design.md](./v3-admin-console-design.md)
+- Codex 用貼り付けプロンプト: [prompts/codex-v3-admin-console.md](./prompts/codex-v3-admin-console.md)
+
+過去の引き継ぎ（履歴として保持）:
+
+- v2.5 UI 修正 統合実装指示書: [handoffs/v2.5-ui-remediation-handoff.md](./handoffs/v2.5-ui-remediation-handoff.md)
+- v2.5 Claude Code 用貼り付けプロンプト:
   [prompts/claude-code-v2.5-ui-remediation.md](./prompts/claude-code-v2.5-ui-remediation.md)
 
 以下の v1 MVP 向けメモは履歴として残す。v2.5 UI 修正では、上記の統合実装指示書を優先する。
