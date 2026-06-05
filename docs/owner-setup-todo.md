@@ -31,6 +31,39 @@
 - 注意: `RAKUTEN_APPLICATION_ID` / `RAKUTEN_AFFILIATE_ID` には **絶対に `NEXT_PUBLIC_` を付けない**（サーバー専用。クライアントへ露出させない）。
 - 未設定時の挙動: 検索は「モック候補」を返し、手入力での保存は可能。
 
+## 1.1 Yahoo!ショッピング API（商品検索）※任意
+未設定でも欲しいもの登録は手入力で動作します。価格比較でYahoo!ショッピングの商品候補を取得する場合のみ設定。
+
+| 変数 | 種別 | 用途 | 取得元 |
+| --- | --- | --- | --- |
+| `YAHOO_SHOPPING_APP_ID` | サーバー専用 | Yahoo!ショッピング商品検索API v3の呼び出し | [Yahoo!デベロッパーネットワーク](https://developer.yahoo.co.jp/webapi/shopping/v3/itemsearch.html) |
+| `YAHOO_VC` | サーバー専用 | バリューコマース等の任意パラメータ付与 | 提携先の管理画面 |
+
+- 注意: `YAHOO_SHOPPING_APP_ID` / `YAHOO_VC` には **絶対に `NEXT_PUBLIC_` を付けない**。
+- TODO: Yahoo!ショッピングAPIの画像利用規約、アフィリエイト表記要件、掲載条件を公開前に確認する。
+
+## 1.2 eBay Browse API（商品検索）※任意
+未設定でも欲しいもの登録は手入力で動作します。価格比較でeBayの商品候補を取得する場合のみ設定。
+
+| 変数 | 種別 | 用途 | 取得元 |
+| --- | --- | --- | --- |
+| `EBAY_CLIENT_ID` | サーバー専用 | Browse API OAuth2 client_credentials | [eBay Developers Program](https://developer.ebay.com/api-docs/buy/browse/resources/item_summary/methods/search) |
+| `EBAY_CLIENT_SECRET` | サーバー専用 | Browse API OAuth2 client_credentials | eBay Developers Program |
+| `EBAY_MARKETPLACE_ID` | サーバー専用 | 検索対象マーケットプレイス（例: `EBAY_US`, `EBAY_JP`） | eBay Developers Program |
+
+- 注意: eBayのアクセストークンはサーバー側で取得し、クライアントへ渡さない。
+- TODO: eBay Browse APIの画像利用規約、アフィリエイト表記要件、掲載条件を公開前に確認する。
+
+## 1.3 為替API（外貨商品のJPY参考換算）※任意
+eBayなど外貨建ての商品候補は、既定でFrankfurterの公開APIを使ってJPY参考値を表示します。未取得時は元通貨の参考値だけを表示し、アプリ全体は継続動作します。
+
+| 変数 | 種別 | 用途 | 取得元 |
+| --- | --- | --- | --- |
+| `EXCHANGE_RATE_API_BASE` | サーバー専用 | 為替APIのベースURL。未指定時は `https://api.frankfurter.dev` | [Frankfurter v2 API](https://frankfurter.dev/) |
+
+- FrankfurterはAPIキー不要で、`/v2/rate/{base}/{quote}` から取得したレートをアプリ側で換算します。
+- TODO: 公開前にFrankfurterまたは代替為替APIの利用条件、商用利用条件、障害時表示方針を確認する。
+
 ## 2. Firebase（クラウド保存・匿名認証）※任意
 6つ**すべて**設定されたときのみ Firestore 保存に切替わります（1つでも空なら LocalStorage 継続）。判定は `src/lib/firebase/client.ts` の `isFirebaseConfigured`。
 

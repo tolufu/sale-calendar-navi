@@ -4,12 +4,11 @@ import type {
   ProductSearchResult,
   RakutenProductSearchProvider
 } from "@/lib/product-search/types";
+import { clampSearchLimit, createMockCandidate, createSearchFailureResult, numericOrNull, withTimeout } from "@/lib/product-search/common";
 import { sanitizeRakutenImageUrl } from "@/lib/utils/rakuten-image";
 
 // 2026-02-10の楽天ウェブサービス刷新で新ドメイン/新パスに移行。applicationIdとaccessKeyの両方が必須。
 const RAKUTEN_SEARCH_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601";
-const DEFAULT_LIMIT = 5;
-const SEARCH_TIMEOUT_MS = 8000;
 const SEARCH_FAILURE_MESSAGE = "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。";
 
 type RakutenImage = {
@@ -22,6 +21,9 @@ type RakutenApiItem = {
   itemUrl?: string;
   affiliateUrl?: string;
   itemPrice?: number;
+  postageFlag?: number;
+  pointRate?: number;
+  availability?: number;
   shopName?: string;
   mediumImageUrls?: RakutenImage[];
   smallImageUrls?: RakutenImage[];
@@ -37,11 +39,7 @@ function firstImageUrl(item: RakutenApiItem): string | null {
 }
 
 function searchFailureResult(): ProductSearchResult {
-  return {
-    configured: true,
-    candidates: [],
-    message: SEARCH_FAILURE_MESSAGE
-  };
+  return createSearchFailureResult(SEARCH_FAILURE_MESSAGE);
 }
 
 function toCandidate(item: RakutenApiItem): ProductSearchCandidate | null {
@@ -50,6 +48,8 @@ function toCandidate(item: RakutenApiItem): ProductSearchCandidate | null {
   }
 
   const imageUrl = firstImageUrl(item);
+  const price = numericOrNull(item.itemPrice);
+  const pointRate = numericOrNull(item.pointRate);
 
   return {
     provider: "rakuten",
@@ -59,7 +59,13 @@ function toCandidate(item: RakutenApiItem): ProductSearchCandidate | null {
     affiliateUrl: item.affiliateUrl ?? null,
     imageUrl,
     imageSource: imageUrl ? "rakuten_api" : "placeholder",
-    price: typeof item.itemPrice === "number" && Number.isFinite(item.itemPrice) ? item.itemPrice : null,
+    price,
+    shippingFee: item.postageFlag === 1 ? 0 : null,
+    points: price !== null && pointRate !== null
+      ? Math.floor(price * pointRate / 100)
+      : null,
+    currency: "JPY",
+    inStock: typeof item.availability === "number" ? item.availability === 1 : null,
     shopName: item.shopName ?? null
   };
 }
@@ -92,17 +98,7 @@ function mockSearch(input: ProductSearchInput): ProductSearchResult {
   return {
     configured: false,
     candidates: [
-      {
-        provider: "rakuten",
-        itemCode: `mock-${encodeURIComponent(keyword)}`,
-        title: `${keyword}（モック候補）`,
-        itemUrl: "https://item.rakuten.co.jp/example/mock-item/",
-        affiliateUrl: null,
-        imageUrl: null,
-        imageSource: "placeholder",
-        price: null,
-        shopName: "楽天API未設定"
-      }
+      createMockCandidate("rakuten", keyword, "https://item.rakuten.co.jp/example/mock-item/")
     ],
     message: "楽天APIキーが未設定のため、プレースホルダー候補を表示しています。手入力のまま保存できます。"
   };
@@ -131,7 +127,7 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
       };
     }
 
-    const limit = Math.min(Math.max(input.limit ?? DEFAULT_LIMIT, 1), 10);
+    const limit = clampSearchLimit(input.limit);
     const url = new URL(RAKUTEN_SEARCH_ENDPOINT);
     url.searchParams.set("format", "json");
     url.searchParams.set("applicationId", this.applicationId);
@@ -143,14 +139,13 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
       url.searchParams.set("affiliateId", this.affiliateId);
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
+    const timeout = withTimeout();
 
     try {
       const response = await fetch(url, {
         headers: { accept: "application/json" },
         next: { revalidate: 3600 },
-        signal: controller.signal
+        signal: timeout.signal
       });
 
       if (!response.ok) {
@@ -172,7 +167,7 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
     } catch {
       return searchFailureResult();
     } finally {
-      clearTimeout(timeoutId);
+      timeout.clear();
     }
   }
 }

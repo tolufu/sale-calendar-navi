@@ -27,6 +27,7 @@ function MobileNavLink({ item, active }: { item: MobileNavItem; active: boolean 
 
 const navItems = [
   { href: "/calendar", label: "カレンダー" },
+  { href: "/compare", label: "価格比較" },
   { href: "/wishlist", label: "欲しいもの" },
   { href: "/history", label: "履歴" },
   { href: "/articles", label: "記事" },
@@ -39,6 +40,7 @@ const mobileNavLeft = [
 ];
 
 const mobileNavRight = [
+  { href: "/compare", label: "比較", icon: Search },
   { href: "/wishlist", label: "欲しいもの", icon: Heart },
   { href: "/history", label: "履歴", icon: History }
 ];
@@ -80,12 +82,12 @@ export function SiteHeader() {
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <Link
-              href="/calendar"
-              aria-label="セールを検索"
+              href="/compare"
+              aria-label="参考価格を比較"
               className="hidden items-center gap-2 rounded-btn bg-white/15 px-3 py-2 text-sm text-white/90 hover:bg-white/25 sm:flex"
             >
               <Search className="h-4 w-4" aria-hidden />
-              <span>セールを探す</span>
+              <span>価格比較</span>
             </Link>
             <Link
               href="/wishlist/new"
@@ -103,7 +105,7 @@ export function SiteHeader() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 shadow-soft backdrop-blur md:hidden"
         aria-label="主要ナビゲーション"
       >
-        <div className="mx-auto grid max-w-md grid-cols-5 items-end px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+        <div className="mx-auto grid max-w-md grid-cols-6 items-end px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
           {mobileNavLeft.map((item) => (
             <MobileNavLink key={item.href} item={item} active={isActivePath(pathname, item.href)} />
           ))}
