@@ -20,3 +20,22 @@ export type ValidatedProductFeedRow = {
   imageUrl: string | null;
   priceMemo: string | null;
 };
+
+export type ProductFeedCsvValidationResult =
+  | { ok: true; value: ValidatedProductFeedRow }
+  | { ok: false; errors: string[] };
+
+export type ProductFeedCsvPreviewRow = {
+  lineNumber: number;
+  row: ProductFeedCsvRow;
+  result: ProductFeedCsvValidationResult;
+};
+
+export type ProductFeedCsvPreview = {
+  fileErrors: string[];
+  rows: ProductFeedCsvPreviewRow[];
+  validRows: ValidatedProductFeedRow[];
+  validCount: number;
+  skippedCount: number;
+  duplicateCount: number;
+};

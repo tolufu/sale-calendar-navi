@@ -7,7 +7,7 @@ import type {
   WishItemInput
 } from "@/lib/repositories/types";
 import { WISH_ITEM_SCHEMA_VERSION } from "@/lib/repositories/types";
-import { sanitizeRakutenImageUrl } from "@/lib/utils/rakuten-image";
+import { sanitizeProductImageUrl } from "@/lib/utils/product-image";
 
 export const emptyPriceBreakdown: PriceBreakdown = {
   productPrice: null,
@@ -33,8 +33,11 @@ export function normalizePriceBreakdown(value: Partial<PriceBreakdown> | null | 
 
 function normalizeCandidate(candidate: Partial<PriceCandidate>, fallback: WishItem | WishItemInput): PriceCandidate {
   // 保存値が改ざんされても許可外ホストの画像を残さないよう、読み込み時に再検証する。
-  const safeImageUrl = candidate.imageSource === "rakuten_api" ? sanitizeRakutenImageUrl(candidate.imageUrl) : null;
-  const imageSource = safeImageUrl ? "rakuten_api" : "placeholder";
+  const candidateImageSource = candidate.imageSource === "rakuten_api" || candidate.imageSource === "yahoo_api" || candidate.imageSource === "ebay_api"
+    ? candidate.imageSource
+    : "placeholder";
+  const safeImageUrl = sanitizeProductImageUrl(candidateImageSource, candidate.imageUrl);
+  const imageSource = safeImageUrl ? candidateImageSource : "placeholder";
 
   return {
     merchantId: candidate.merchantId || fallback.merchantId,

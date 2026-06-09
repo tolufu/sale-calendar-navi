@@ -15,7 +15,7 @@
 | フレームワーク | Next.js（App Router） | RSC基本、必要箇所のみClient Component |
 | 言語 | TypeScript | strict |
 | スタイル | Tailwind CSS | 色トークンでEC色分け |
-| 認証 | Firebase Anonymous Auth | 未設定時はローカル匿名IDで代替 |
+| 認証 | Firebase Anonymous Auth + 管理者Email/Password Auth | 未設定時は一般利用者のみローカル匿名IDで代替 |
 | DB | Cloud Firestore | 未設定時は localStorage フォールバック |
 | テスト | Vitest + Testing Library | ユーティリティ/コンポーネント中心 |
 | Lint/Format | ESLint + Prettier | |
@@ -88,14 +88,14 @@ interface WishItemRepository {
 
 ```
 merchants/{merchantId}
-saleEvents/{eventId}                 # merchantId を持つ
+sales/{eventId}                      # merchantId を持つ
 users/{uid}/wishItems/{itemId}
 users/{uid}/purchaseHistory/{id}
 users/{uid}/notificationSetting/default
 articles/{slug}                      # 公開コンテンツ
 ```
 
-- セキュリティルール: `users/{uid}/**` は本人のみ。`merchants`/`saleEvents`/`articles` は読み取り公開。
+- セキュリティルール: `users/{uid}/**` は本人のみ。`merchants`/`sales` は読み取り公開。`articles` は公開状態のみ読み取り公開。
 
 ---
 

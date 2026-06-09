@@ -29,10 +29,11 @@ npm audit --omit=dev
 1. Firebase Console で Web App を作成する。
 2. Authentication の Anonymous provider を有効化する。
 3. Authentication の許可ドメインに Vercel の本番ドメインを追加する。
-4. Firebase Web SDK の公開設定値を Vercel の `NEXT_PUBLIC_FIREBASE_*` に設定する。
-5. 現時点の Firestore リポジトリは localStorage 互換スタブであることを確認する。
-6. Firestore永続化を実装するまでは `firestore.rules` の deny-all を維持する。
-7. Firestore永続化を将来有効化する場合は、ユーザー単位の rules をレビューしてから `firebase deploy --only firestore:rules` を実行する。
+4. リポジトリ内の `firestore.rules` をレビューし、対象Firebaseプロジェクトを選択して `firebase deploy --only firestore:rules` を実行する。
+5. Firebase Web SDK の公開設定値を Vercel の `NEXT_PUBLIC_FIREBASE_*` に設定する。
+6. `/admin` を使う場合は Authentication の Email/Password provider を有効化し、管理者ユーザーを作成する。
+7. Firebaseコンソールで `admins/{uid}` ドキュメントを手動作成する。クライアントからallowlistを更新しない。
+8. `/admin/sign-in` からサインインし、Firestoreが空の場合だけ「静的データをFirestoreへ投入」を実行する。
 
 ## 4. Preview 確認
 

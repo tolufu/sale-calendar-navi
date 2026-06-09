@@ -4,13 +4,30 @@ import type {
   ProductSearchResult,
   RakutenProductSearchProvider
 } from "@/lib/product-search/types";
+import { buildMockSearchResult, clampSearchLimit, createSearchFailureResult, extractSearchKeyword, numericOrNull, withTimeout } from "@/lib/product-search/common";
 import { sanitizeRakutenImageUrl } from "@/lib/utils/rakuten-image";
 
-// 2026-02-10の楽天ウェブサービス刷新で新ドメイン/新パスに移行。applicationIdとaccessKeyの両方が必須。
-const RAKUTEN_SEARCH_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601";
-const DEFAULT_LIMIT = 5;
-const SEARCH_TIMEOUT_MS = 8000;
+const MERCHANT_ID = "rakuten";
+// 2026刷新後の楽天ウェブサービス。新ドメイン/新パスに移行し、applicationIdとaccessKeyの両方＋登録ドメイン一致のOrigin/Refererが必須。
+const RAKUTEN_SEARCH_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401";
 const SEARCH_FAILURE_MESSAGE = "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。";
+// 認証/参照元エラー（applicationId・accessKey・Origin/Refererの設定ミス）は障害と区別したメッセージを返す。
+const SEARCH_AUTH_FAILURE_MESSAGE =
+  "楽天APIの認証に失敗しました。サーバーの RAKUTEN_APPLICATION_ID / RAKUTEN_ACCESS_KEY と、登録ドメインを指す RAKUTEN_API_REFERER の設定をご確認ください。";
+
+// 楽天の上流エラー本文（新旧で形が異なる）からメッセージだけを安全に取り出す。
+function extractUpstreamErrorMessage(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as {
+      errors?: { errorMessage?: string };
+      error?: string;
+      error_description?: string;
+    };
+    return parsed.errors?.errorMessage ?? parsed.error_description ?? parsed.error ?? null;
+  } catch {
+    return null;
+  }
+}
 
 type RakutenImage = {
   imageUrl?: string;
@@ -22,13 +39,17 @@ type RakutenApiItem = {
   itemUrl?: string;
   affiliateUrl?: string;
   itemPrice?: number;
+  postageFlag?: number;
+  pointRate?: number;
+  availability?: number;
   shopName?: string;
   mediumImageUrls?: RakutenImage[];
   smallImageUrls?: RakutenImage[];
 };
 
+// 新ゲートウェイが Item ラッパーを付けず平坦に返す場合に備え、ラッパー有無の両方を受け付ける。
 type RakutenApiResponse = {
-  Items?: Array<{ Item?: RakutenApiItem }>;
+  Items?: Array<{ Item?: RakutenApiItem } & RakutenApiItem>;
 };
 
 function firstImageUrl(item: RakutenApiItem): string | null {
@@ -36,12 +57,8 @@ function firstImageUrl(item: RakutenApiItem): string | null {
   return sanitizeRakutenImageUrl(imageUrl);
 }
 
-function searchFailureResult(): ProductSearchResult {
-  return {
-    configured: true,
-    candidates: [],
-    message: SEARCH_FAILURE_MESSAGE
-  };
+function searchFailureResult(message: string = SEARCH_FAILURE_MESSAGE): ProductSearchResult {
+  return createSearchFailureResult(message);
 }
 
 function toCandidate(item: RakutenApiItem): ProductSearchCandidate | null {
@@ -50,75 +67,52 @@ function toCandidate(item: RakutenApiItem): ProductSearchCandidate | null {
   }
 
   const imageUrl = firstImageUrl(item);
+  const price = numericOrNull(item.itemPrice);
+  const pointRate = numericOrNull(item.pointRate);
 
   return {
-    provider: "rakuten",
+    provider: MERCHANT_ID,
     itemCode: item.itemCode ?? item.itemUrl,
     title: item.itemName,
     itemUrl: item.itemUrl,
     affiliateUrl: item.affiliateUrl ?? null,
     imageUrl,
     imageSource: imageUrl ? "rakuten_api" : "placeholder",
-    price: typeof item.itemPrice === "number" && Number.isFinite(item.itemPrice) ? item.itemPrice : null,
+    price,
+    shippingFee: item.postageFlag === 1 ? 0 : null,
+    points: price !== null && pointRate !== null
+      ? Math.floor(price * pointRate / 100)
+      : null,
+    currency: "JPY",
+    inStock: typeof item.availability === "number" ? item.availability === 1 : null,
     shopName: item.shopName ?? null
   };
 }
 
-export function extractRakutenKeyword(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    const pathParts = parsed.pathname.split("/").filter(Boolean);
-    return decodeURIComponent(pathParts[pathParts.length - 1] ?? parsed.hostname);
-  } catch {
-    return trimmed;
-  }
-}
-
 function mockSearch(input: ProductSearchInput): ProductSearchResult {
-  const keyword = extractRakutenKeyword(input.query);
-  if (!keyword) {
-    return {
-      configured: false,
-      candidates: [],
-      message: "楽天APIキーが未設定です。キーワードを入れるとモック候補を表示できます。"
-    };
-  }
-
-  return {
-    configured: false,
-    candidates: [
-      {
-        provider: "rakuten",
-        itemCode: `mock-${encodeURIComponent(keyword)}`,
-        title: `${keyword}（モック候補）`,
-        itemUrl: "https://item.rakuten.co.jp/example/mock-item/",
-        affiliateUrl: null,
-        imageUrl: null,
-        imageSource: "placeholder",
-        price: null,
-        shopName: "楽天API未設定"
-      }
-    ],
-    message: "楽天APIキーが未設定のため、プレースホルダー候補を表示しています。手入力のまま保存できます。"
-  };
+  return buildMockSearchResult({
+    provider: MERCHANT_ID,
+    keyword: extractSearchKeyword(input.query),
+    exampleUrl: "https://item.rakuten.co.jp/example/mock-item/",
+    emptyMessage: "楽天APIキーが未設定です。キーワードを入れるとモック候補を表示できます。",
+    configuredMessage: "楽天APIキーが未設定のため、プレースホルダー候補を表示しています。手入力のまま保存できます。"
+  });
 }
 
 export class RakutenIchibaProductSearchProvider implements RakutenProductSearchProvider {
-  readonly merchantId = "rakuten";
+  readonly merchantId = MERCHANT_ID;
 
   constructor(
     private readonly applicationId = process.env.RAKUTEN_APPLICATION_ID,
     private readonly accessKey = process.env.RAKUTEN_ACCESS_KEY,
-    private readonly affiliateId = process.env.RAKUTEN_AFFILIATE_ID
+    private readonly affiliateId = process.env.RAKUTEN_AFFILIATE_ID,
+    // 刷新後の楽天APIは登録ドメイン一致のOrigin/Refererを要求する。サーバー実行ではfetchが自動付与しないため明示する。
+    // 値はアプリ登録時のApplication URLと一致が必要（localhost等の汎用値は403）。
+    private readonly apiReferer = process.env.RAKUTEN_API_REFERER ?? process.env.NEXT_PUBLIC_SITE_URL
   ) {}
 
   async search(input: ProductSearchInput): Promise<ProductSearchResult> {
-    const keyword = extractRakutenKeyword(input.query);
+    const keyword = extractSearchKeyword(input.query);
     // 刷新後の楽天APIは applicationId と accessKey の両方が必須。片方でも欠ければ未設定扱い。
     if (!this.applicationId || !this.accessKey) {
       return mockSearch(input);
@@ -131,7 +125,7 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
       };
     }
 
-    const limit = Math.min(Math.max(input.limit ?? DEFAULT_LIMIT, 1), 10);
+    const limit = clampSearchLimit(input.limit);
     const url = new URL(RAKUTEN_SEARCH_ENDPOINT);
     url.searchParams.set("format", "json");
     url.searchParams.set("applicationId", this.applicationId);
@@ -143,36 +137,59 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
       url.searchParams.set("affiliateId", this.affiliateId);
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
+    const headers: Record<string, string> = { accept: "application/json" };
+    if (this.apiReferer) {
+      const origin = this.apiReferer.replace(/\/+$/, "");
+      headers.Origin = origin;
+      headers.Referer = `${origin}/`;
+    }
+
+    const timeout = withTimeout();
 
     try {
       const response = await fetch(url, {
-        headers: { accept: "application/json" },
+        headers,
         next: { revalidate: 3600 },
-        signal: controller.signal
+        signal: timeout.signal
       });
 
       if (!response.ok) {
+        // 失敗を握りつぶすと「設定ミス」か「障害」か切り分けられないため、状況をサーバーログへ残す。
+        const errorBody = await response.text().catch(() => "");
+        const upstreamMessage = extractUpstreamErrorMessage(errorBody);
+        console.error(
+          `[rakuten-search] upstream error: status=${response.status} message=${upstreamMessage ?? "(none)"}`
+        );
+        // 401/403 は applicationId / accessKey / Origin・Referer の設定ミスなので、専用メッセージで案内する。
+        if (response.status === 401 || response.status === 403) {
+          return searchFailureResult(SEARCH_AUTH_FAILURE_MESSAGE);
+        }
         return searchFailureResult();
       }
 
       const body = (await response.json()) as RakutenApiResponse;
       const candidates = (body.Items ?? [])
-        .map((entry) => entry.Item)
+        // 新ゲートウェイが Item ラッパー無しで返す可能性に備え、ラッパーが無ければ要素自体を商品とみなす。
+        .map((entry) => entry.Item ?? entry)
         .filter((item): item is RakutenApiItem => Boolean(item))
         .map(toCandidate)
         .filter((item): item is ProductSearchCandidate => item !== null);
+
+      if (!candidates.length && (body.Items?.length ?? 0) === 0) {
+        // 200 だが Items が空＝レスポンス構造のズレを疑えるよう、トップレベルキーを記録する。
+        console.warn(`[rakuten-search] empty result. response keys=${Object.keys(body ?? {}).join(",")}`);
+      }
 
       return {
         configured: true,
         candidates,
         message: candidates.length ? null : "候補が見つかりませんでした。手入力で続けられます。"
       };
-    } catch {
+    } catch (error) {
+      console.error("[rakuten-search] request failed:", error);
       return searchFailureResult();
     } finally {
-      clearTimeout(timeoutId);
+      timeout.clear();
     }
   }
 }

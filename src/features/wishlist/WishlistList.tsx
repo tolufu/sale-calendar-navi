@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { isAllowedRakutenImageUrl } from "@/lib/utils/rakuten-image";
 import Link from "next/link";
 import { Bell, ExternalLink, LinkIcon, Pencil, Share2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -13,11 +12,12 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Toast } from "@/components/ui/Toast";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
-import type { Merchant, PriceCandidate, SaleEvent, WishItem } from "@/lib/repositories/types";
+import type { Merchant, PriceCandidate, ProductImageSource, SaleEvent, WishItem } from "@/lib/repositories/types";
 import { buildAffiliateUrl } from "@/lib/utils/affiliate";
 import { calculateBuyTimingScore, type SaleImportance } from "@/lib/utils/buy-timing-score";
 import { getMerchantToneClass } from "@/lib/utils/merchant";
 import { formatPrice, pickCandidateEffectivePrice, pickEffectivePriceDiff } from "@/lib/utils/price";
+import { getProductImageSourceLabel, isAllowedProductImageUrl } from "@/lib/utils/product-image";
 import { buildCompareShareText, buildXIntentUrl } from "@/lib/utils/share";
 
 function imagePath(key: string): string {
@@ -54,7 +54,7 @@ type CandidateEditDraft = {
   merchantId: string;
   originalUrl: string;
   affiliateUrl: string | null;
-  imageSource: "placeholder" | "rakuten_api";
+  imageSource: ProductImageSource;
   imageUrl: string | null;
   productPrice: string;
   shippingFee: string;
@@ -132,7 +132,7 @@ function parseCandidateDrafts(drafts: CandidateEditDraft[], merchants: Merchant[
         priceMemo: draft.priceMemo.trim() || null,
         lastCheckedAt: breakdown.productPrice === null ? null : now,
         imageSource: draft.imageSource,
-        imageUrl: draft.imageSource === "rakuten_api" ? draft.imageUrl : null
+        imageUrl: draft.imageSource !== "placeholder" && isAllowedProductImageUrl(draft.imageSource, draft.imageUrl) ? draft.imageUrl : null
       };
     });
 }
@@ -346,16 +346,20 @@ export function WishlistList() {
           checkedAt: item.lastCheckedAt ?? null
         });
         const linkLabel = item.merchantId === "rakuten" ? "楽天で見る" : "外部リンク";
-        const showRakutenImage = primaryCandidate?.imageSource === "rakuten_api" && primaryCandidate.imageUrl && isAllowedRakutenImageUrl(primaryCandidate.imageUrl);
+        const showApiImage = primaryCandidate?.imageSource && primaryCandidate.imageSource !== "placeholder"
+          && primaryCandidate.imageUrl
+          && isAllowedProductImageUrl(primaryCandidate.imageSource, primaryCandidate.imageUrl);
         return (
           <Card key={item.id} className="flex flex-col gap-4 lg:flex-row">
             {/* 画像 */}
             <div className="shrink-0">
-              {showRakutenImage && primaryCandidate?.imageUrl ? (
+              {showApiImage && primaryCandidate?.imageUrl ? (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- 楽天公式APIの許可ホスト画像URLのみを描画時に再検証して表示する。 */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- 公式APIの許可ホスト画像URLのみを描画時に再検証して表示する。 */}
                   <img src={primaryCandidate.imageUrl} alt="" className="h-28 w-28 rounded-lg border border-line object-cover" />
-                  <p className="mt-1 text-[11px] text-muted" title="楽天APIから返された画像URLのみ表示しています。">画像: 楽天API</p>
+                  <p className="mt-1 text-[11px] text-muted" title="公式APIから返された許可ホスト画像URLのみ表示しています。">
+                    画像: {getProductImageSourceLabel(primaryCandidate.imageSource)}
+                  </p>
                 </>
               ) : (
                 <Image src={imagePath(item.placeholderKey)} alt="" width={112} height={112} className="h-28 w-28 rounded-lg border border-line bg-surface" />

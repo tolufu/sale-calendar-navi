@@ -88,7 +88,7 @@ export type Offer = {
   effectivePrice?: number | null;
   checkedAt?: string | null;
   sourceType?: "manual" | "affiliate" | "imported";
-  imageSource?: "placeholder" | "rakuten_api";
+  imageSource?: ProductImageSource;
   imageUrl?: string | null;
   priceMemo: string | null;
   updatedAt: string;
@@ -101,9 +101,11 @@ export type PriceCandidate = {
   breakdown: PriceBreakdown;
   priceMemo: string | null;
   lastCheckedAt: string | null;
-  imageSource: "placeholder" | "rakuten_api";
+  imageSource: ProductImageSource;
   imageUrl?: string | null;
 };
+
+export type ProductImageSource = "placeholder" | "rakuten_api" | "yahoo_api" | "ebay_api";
 
 export const WISH_ITEM_SCHEMA_VERSION = 2;
 
@@ -156,6 +158,8 @@ export type NotificationSetting = {
   unsubscribeToken: string;
 };
 
+export type ArticleStatus = "draft" | "published";
+
 export type Article = {
   slug: string;
   title: string;
@@ -165,6 +169,8 @@ export type Article = {
   tags: string[];
   publishedAt: string;
   relatedSlugs?: string[];
+  status?: ArticleStatus;
+  updatedAt?: string;
 };
 
 export type LoadingState = "idle" | "loading" | "success" | "empty" | "error";
@@ -208,6 +214,32 @@ export interface ArticleRepository {
   get(slug: string): Promise<Article | null>;
 }
 
+export interface AdminArticleRepository {
+  listAll(): Promise<Article[]>;
+  get(slug: string): Promise<Article | null>;
+  upsert(article: Article): Promise<Article>;
+  remove(slug: string): Promise<void>;
+}
+
+export type BulkUpsertResult = {
+  created: number;
+  updated: number;
+};
+
+export interface AdminSaleRepository {
+  listAll(): Promise<SaleEvent[]>;
+  get(id: string): Promise<SaleEvent | null>;
+  upsert(event: SaleEvent): Promise<SaleEvent>;
+  bulkUpsert(events: SaleEvent[]): Promise<BulkUpsertResult>;
+  remove(id: string): Promise<void>;
+}
+
+export interface AdminMerchantRepository {
+  listAll(): Promise<Merchant[]>;
+  get(merchantId: string): Promise<Merchant | null>;
+  upsert(merchant: Merchant): Promise<Merchant>;
+}
+
 export type AppRepositories = {
   merchants: MerchantRepository;
   sales: SaleRepository;
@@ -215,4 +247,10 @@ export type AppRepositories = {
   history: HistoryRepository;
   notifications: NotificationRepository;
   articles: ArticleRepository;
+};
+
+export type AdminRepositories = {
+  articles: AdminArticleRepository;
+  sales: AdminSaleRepository;
+  merchants: AdminMerchantRepository;
 };

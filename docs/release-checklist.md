@@ -33,8 +33,8 @@
 
 - [ ] Firebaseを使わない場合、Firebase環境変数を空欄にして localStorage フォールバックを確認する。
 - [ ] Firebaseを使う場合、Anonymous Authentication と許可ドメインを確認する。
-- [ ] `firestore.rules` は deny-all の初期値である。Firestore永続化を接続するまでは緩和しない。
-- [ ] Firestore永続化を接続する場合、ユーザー単位のアクセス制御をレビューし、rules をデプロイする。
+- [ ] Firestoreを使う場合、`users/{uid}/**` が本人限定、公開コンテンツの書込が管理者限定であることをレビューし、`firestore.rules` をデプロイする。
+- [ ] `/admin` を使う場合、Email/Password Authentication と `admins/{uid}` allowlist の手動登録を確認する。
 - [ ] 通知画面は設定保存と通知候補表示のみで、実メールを送信しないことを確認する。
 
 ## データ・画像・表現
