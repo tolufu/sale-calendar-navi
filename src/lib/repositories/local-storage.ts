@@ -3,7 +3,12 @@
 import { articles } from "@/data/articles";
 import { merchants } from "@/data/merchants";
 import { saleEvents } from "@/data/sales";
+import { getPublishedArticles, sortArticles } from "@/lib/articles/article";
 import type {
+  AdminArticleRepository,
+  AdminMerchantRepository,
+  AdminRepositories,
+  AdminSaleRepository,
   AppRepositories,
   Article,
   HistoryRepository,
@@ -47,26 +52,49 @@ function writeJson<T>(key: string, value: T): void {
 const keys = {
   wishlist: (userId: string) => `sale-calendar-navi:${userId}:wishlist`,
   history: (userId: string) => `sale-calendar-navi:${userId}:history`,
-  notification: (userId: string) => `sale-calendar-navi:${userId}:notification`
+  notification: (userId: string) => `sale-calendar-navi:${userId}:notification`,
+  articles: "sale-calendar-navi:admin:articles",
+  sales: "sale-calendar-navi:admin:sales",
+  merchants: "sale-calendar-navi:admin:merchants"
 };
+
+function readLocalArticles(): Article[] {
+  return readJson<Article[] | null>(keys.articles, null) ?? [...articles];
+}
+
+function readLocalSales(): SaleEvent[] {
+  return readJson<SaleEvent[] | null>(keys.sales, null) ?? [...saleEvents];
+}
+
+function readLocalMerchants(): Merchant[] {
+  return readJson<Merchant[] | null>(keys.merchants, null) ?? [...merchants];
+}
+
+function sortMerchants(items: Merchant[]): Merchant[] {
+  return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function sortSales(events: SaleEvent[]): SaleEvent[] {
+  return [...events].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+}
 
 export class LocalMerchantRepository implements MerchantRepository {
   async list(): Promise<Merchant[]> {
-    return merchants.filter((merchant) => merchant.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+    return sortMerchants(readLocalMerchants().filter((merchant) => merchant.isActive));
   }
 
   async get(merchantId: string): Promise<Merchant | null> {
-    return merchants.find((merchant) => merchant.merchantId === merchantId) ?? null;
+    return readLocalMerchants().find((merchant) => merchant.merchantId === merchantId) ?? null;
   }
 }
 
 export class LocalSaleRepository implements SaleRepository {
   async list(): Promise<SaleEvent[]> {
-    return [...saleEvents].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+    return sortSales(readLocalSales());
   }
 
   async get(id: string): Promise<SaleEvent | null> {
-    return saleEvents.find((event) => event.id === id) ?? null;
+    return readLocalSales().find((event) => event.id === id) ?? null;
   }
 }
 
@@ -163,11 +191,108 @@ export class LocalNotificationRepository implements NotificationRepository {
 
 export class LocalArticleRepository {
   async list(): Promise<Article[]> {
-    return [...articles].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    return sortArticles(getPublishedArticles(readLocalArticles()));
   }
 
   async get(slug: string): Promise<Article | null> {
-    return articles.find((article) => article.slug === slug) ?? null;
+    return getPublishedArticles(readLocalArticles()).find((article) => article.slug === slug) ?? null;
+  }
+}
+
+export class LocalAdminArticleRepository implements AdminArticleRepository {
+  async listAll(): Promise<Article[]> {
+    return sortArticles(readLocalArticles());
+  }
+
+  async get(slug: string): Promise<Article | null> {
+    return readLocalArticles().find((article) => article.slug === slug) ?? null;
+  }
+
+  async upsert(article: Article): Promise<Article> {
+    const stored = readLocalArticles();
+    const updated = {
+      ...article,
+      updatedAt: new Date().toISOString()
+    };
+    const index = stored.findIndex((item) => item.slug === article.slug);
+
+    if (index === -1) {
+      stored.push(updated);
+    } else {
+      stored[index] = updated;
+    }
+    writeJson(keys.articles, stored);
+    return updated;
+  }
+
+  async remove(slug: string): Promise<void> {
+    writeJson(keys.articles, readLocalArticles().filter((article) => article.slug !== slug));
+  }
+}
+
+export class LocalAdminSaleRepository implements AdminSaleRepository {
+  async listAll(): Promise<SaleEvent[]> {
+    return sortSales(readLocalSales());
+  }
+
+  async get(id: string): Promise<SaleEvent | null> {
+    return readLocalSales().find((event) => event.id === id) ?? null;
+  }
+
+  async upsert(event: SaleEvent): Promise<SaleEvent> {
+    const stored = readLocalSales();
+    const index = stored.findIndex((item) => item.id === event.id);
+    if (index === -1) {
+      stored.push(event);
+    } else {
+      stored[index] = event;
+    }
+    writeJson(keys.sales, stored);
+    return event;
+  }
+
+  async bulkUpsert(events: SaleEvent[]): Promise<{ created: number; updated: number }> {
+    const stored = readLocalSales();
+    const storedById = new Map(stored.map((event) => [event.id, event]));
+    let created = 0;
+    let updated = 0;
+
+    events.forEach((event) => {
+      if (storedById.has(event.id)) {
+        updated += 1;
+      } else {
+        created += 1;
+      }
+      storedById.set(event.id, event);
+    });
+    writeJson(keys.sales, [...storedById.values()]);
+    return { created, updated };
+  }
+
+  async remove(id: string): Promise<void> {
+    writeJson(keys.sales, readLocalSales().filter((event) => event.id !== id));
+  }
+}
+
+export class LocalAdminMerchantRepository implements AdminMerchantRepository {
+  async listAll(): Promise<Merchant[]> {
+    return sortMerchants(readLocalMerchants());
+  }
+
+  async get(merchantId: string): Promise<Merchant | null> {
+    return readLocalMerchants().find((merchant) => merchant.merchantId === merchantId) ?? null;
+  }
+
+  async upsert(merchant: Merchant): Promise<Merchant> {
+    const stored = readLocalMerchants();
+    const index = stored.findIndex((item) => item.merchantId === merchant.merchantId);
+    if (index === -1) {
+      stored.push(merchant);
+    } else {
+      stored[index] = merchant;
+    }
+    writeJson(keys.merchants, stored);
+    return merchant;
   }
 }
 
@@ -179,5 +304,13 @@ export function createLocalRepositories(): AppRepositories {
     history: new LocalHistoryRepository(),
     notifications: new LocalNotificationRepository(),
     articles: new LocalArticleRepository()
+  };
+}
+
+export function createLocalAdminRepositories(): AdminRepositories {
+  return {
+    articles: new LocalAdminArticleRepository(),
+    sales: new LocalAdminSaleRepository(),
+    merchants: new LocalAdminMerchantRepository()
   };
 }

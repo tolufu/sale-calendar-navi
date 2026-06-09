@@ -1,10 +1,15 @@
 import type { MetadataRoute } from "next";
-import { articles } from "@/data/articles";
-import { saleEvents } from "@/data/sales";
+import { listPublishedArticlesForServer } from "@/lib/articles/public-server";
+import { listSalesForServer } from "@/lib/sales/public-server";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+export const dynamic = "force-dynamic";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const [articles, saleEvents] = await Promise.all([
+    listPublishedArticlesForServer(),
+    listSalesForServer()
+  ]);
   const staticPaths = ["/", "/calendar", "/compare", "/wishlist", "/articles", "/history", "/settings/notifications", "/terms", "/privacy", "/operator", "/contact"];
   return [
     ...staticPaths.map((path) => ({ url: `${baseUrl}${path}`, lastModified: new Date() })),

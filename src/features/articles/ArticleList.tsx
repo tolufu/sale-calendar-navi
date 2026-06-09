@@ -4,10 +4,12 @@ import { AdPlaceholder } from "@/components/ui/AdPlaceholder";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { articles } from "@/data/articles";
+import { listPublishedArticlesForServer } from "@/lib/articles/public-server";
 import { formatDate } from "@/lib/utils/date";
 
-export function ArticleList() {
+export async function ArticleList() {
+  const articles = await listPublishedArticlesForServer();
+
   if (articles.length === 0) {
     return (
       <EmptyState

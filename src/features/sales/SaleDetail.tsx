@@ -11,10 +11,9 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { articles } from "@/data/articles";
 import { getAnonymousUserId } from "@/lib/firebase/auth";
 import { getRepositories } from "@/lib/repositories";
-import type { Merchant, SaleEvent, WishItem } from "@/lib/repositories/types";
+import type { Article, Merchant, SaleEvent, WishItem } from "@/lib/repositories/types";
 import { formatDate, formatDateTime, formatSaleStatus, getSaleStatus, isEstimatedSale, type SaleStatus } from "@/lib/utils/date";
 import { getMerchantToneClass } from "@/lib/utils/merchant";
 import { formatPrice } from "@/lib/utils/price";
@@ -35,6 +34,7 @@ export function SaleDetail({ saleId }: { saleId: string }) {
   const [relatedSales, setRelatedSales] = useState<SaleEvent[]>([]);
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [wishes, setWishes] = useState<WishItem[]>([]);
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
   const [savedToHistory, setSavedToHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,14 +45,16 @@ export function SaleDetail({ saleId }: { saleId: string }) {
     try {
       const repositories = getRepositories();
       const userId = await getAnonymousUserId();
-      const [saleItem, allSales, allMerchants, wishItems] = await Promise.all([
+      const [saleItem, allSales, allMerchants, wishItems, articleItems] = await Promise.all([
         repositories.sales.get(saleId),
         repositories.sales.list(),
         repositories.merchants.list(),
-        repositories.wishlist.list(userId)
+        repositories.wishlist.list(userId),
+        repositories.articles.list()
       ]);
       setSale(saleItem);
       setWishes(wishItems.filter((item) => item.targetSaleEventId === saleId));
+      setRelatedArticles(articleItems.slice(0, 3));
       if (saleItem) {
         setMerchant(allMerchants.find((entry) => entry.merchantId === saleItem.merchantId) ?? null);
         setRelatedSales(
@@ -97,7 +99,6 @@ export function SaleDetail({ saleId }: { saleId: string }) {
     .split(/[。\n]/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const relatedArticles = articles.slice(0, 3);
 
   return (
     <div className="space-y-5">

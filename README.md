@@ -37,9 +37,9 @@ cp .env.example .env.local
 
 ### Firebase
 
-Firebase Web SDK の設定値をすべて設定すると、Firebase Anonymous Auth を使います。未設定または一部未設定の場合は、ブラウザでローカル匿名IDを作成し、localStorage リポジトリへフォールバックします。
+Firebase Web SDK の設定値をすべて設定すると、Firebase Anonymous Auth と Firestore を使います。未設定または一部未設定の場合は、ブラウザでローカル匿名IDを作成し、localStorage リポジトリへフォールバックします。
 
-現時点の Firestore リポジトリは localStorage 互換スタブです。Firebase値を設定しても、欲しいもの等の永続化先は localStorage のままです。Firestore 永続化を有効にする前に `firestore.rules` を要件に合わせて更新し、Firebase側へデプロイしてください。
+Firestoreを有効にする前に、リポジトリ内の `firestore.rules` をレビューし、Firebase側へデプロイしてください。管理者コンソール `/admin/sign-in` を使う場合は、Authentication のメール/パスワード認証を有効化し、Firebaseコンソールで `admins/{uid}` allowlistを手動登録します。
 
 ```bash
 NEXT_PUBLIC_FIREBASE_API_KEY=
@@ -95,7 +95,7 @@ npm run test:e2e
 3. Preview / Production ごとに必要な Environment Variables を設定する。秘密値をリポジトリへ追加しない。
 4. Production の `NEXT_PUBLIC_SITE_URL` は公開URLにする。OGP、canonical、`sitemap.xml`、`robots.txt` の基準URLに使われる。
 5. `NEXT_PUBLIC_CONTACT_EMAIL` に公開してよい問い合わせ先を設定する。
-6. Firebaseを使う場合は Anonymous Authentication を有効化し、許可ドメインを確認する。Firestore永続化は現状未接続のため、有効化前に rules と実装を別途レビューする。
+6. Firebaseを使う場合は Anonymous Authentication を有効化し、許可ドメインを確認する。Firestoreの環境変数を設定する前に `firestore.rules` をレビューしてデプロイする。
 7. デプロイ後に [リリースチェックリスト](./docs/release-checklist.md) と [手動リリース手順](./docs/manual-release-steps.md) を確認する。
 
 ## v1.1 価格メモ
