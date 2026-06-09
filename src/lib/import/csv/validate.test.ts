@@ -34,7 +34,7 @@ describe("CSV product feed validation", () => {
   });
 
   it("未連携ECの商品フィードを拒否する", () => {
-    const result = validateProductFeedCsvRow({ ...validRow, merchantId: "yahoo-shopping" }, merchants);
+    const result = validateProductFeedCsvRow({ ...validRow, merchantId: "amazon" }, merchants);
     expect(result).toMatchObject({ ok: false });
     if (!result.ok) {
       expect(result.errors).toContain("未連携ECの商品フィードは取り込めません。");

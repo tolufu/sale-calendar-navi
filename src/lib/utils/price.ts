@@ -56,7 +56,12 @@ export function calculateEffectivePrice(
 export const computeEffectivePrice = calculateEffectivePrice;
 
 export function pickCandidateEffectivePrice(candidate: PriceCandidate): number | null {
-  return calculateEffectivePrice(candidate.breakdown);
+  // 保存済み・外部由来の内訳に不正値が混ざっても描画を止めないよう、未計算(null)に倒す。
+  try {
+    return calculateEffectivePrice(candidate.breakdown);
+  } catch {
+    return null;
+  }
 }
 
 export function pickEffectivePriceDiff(candidates: PriceCandidate[]): {

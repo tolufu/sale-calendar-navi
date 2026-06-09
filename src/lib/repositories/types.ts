@@ -88,7 +88,7 @@ export type Offer = {
   effectivePrice?: number | null;
   checkedAt?: string | null;
   sourceType?: "manual" | "affiliate" | "imported";
-  imageSource?: "placeholder" | "rakuten_api";
+  imageSource?: ProductImageSource;
   imageUrl?: string | null;
   priceMemo: string | null;
   updatedAt: string;
@@ -101,9 +101,11 @@ export type PriceCandidate = {
   breakdown: PriceBreakdown;
   priceMemo: string | null;
   lastCheckedAt: string | null;
-  imageSource: "placeholder" | "rakuten_api";
+  imageSource: ProductImageSource;
   imageUrl?: string | null;
 };
+
+export type ProductImageSource = "placeholder" | "rakuten_api" | "yahoo_api" | "ebay_api";
 
 export const WISH_ITEM_SCHEMA_VERSION = 2;
 

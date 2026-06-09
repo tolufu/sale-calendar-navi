@@ -10,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     listPublishedArticlesForServer(),
     listSalesForServer()
   ]);
-  const staticPaths = ["/", "/calendar", "/wishlist", "/articles", "/history", "/settings/notifications", "/terms", "/privacy", "/operator", "/contact"];
+  const staticPaths = ["/", "/calendar", "/compare", "/wishlist", "/articles", "/history", "/settings/notifications", "/terms", "/privacy", "/operator", "/contact"];
   return [
     ...staticPaths.map((path) => ({ url: `${baseUrl}${path}`, lastModified: new Date() })),
     ...saleEvents.map((sale) => ({ url: `${baseUrl}/sales/${sale.id}`, lastModified: new Date(sale.startAt) })),

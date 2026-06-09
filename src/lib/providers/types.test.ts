@@ -4,7 +4,7 @@ import { assertMerchantSupportsAutoFetch } from "@/lib/providers/types";
 
 describe("assertMerchantSupportsAutoFetch", () => {
   it("未対応ECの自動取得を拒否する", () => {
-    const merchant = merchants.find((item) => item.merchantId === "yahoo-shopping");
+    const merchant = merchants.find((item) => item.merchantId === "amazon");
     expect(merchant).toBeDefined();
     expect(() => assertMerchantSupportsAutoFetch(merchant!)).toThrow("価格や画像の自動取得は行いません");
   });
