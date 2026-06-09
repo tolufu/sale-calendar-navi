@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -24,6 +25,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <SiteHeader />
         <main className="mx-auto min-h-[calc(100vh-180px)] max-w-6xl px-4 pb-24 pt-8 md:pb-8">{children}</main>
         <SiteFooter />
+        {/* Vercel Web Analytics（Cookieレス）。Vercel管理画面でAnalyticsをONにすると計測開始。 */}
+        <Analytics />
       </body>
     </html>
   );
