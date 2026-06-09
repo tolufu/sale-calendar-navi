@@ -7,36 +7,15 @@
  * 許可外のURLは表示せず、外部画像へフォールバックしない。
  */
 
-const ALLOWED_IMAGE_HOST = "image.rakuten.co.jp";
+import { isAllowedProductImageUrl, sanitizeProductImageUrl } from "@/lib/utils/product-image";
 
 export function isAllowedRakutenImageUrl(value: string | null | undefined): boolean {
-  if (!value) {
-    return false;
-  }
-
-  try {
-    const parsed = new URL(value);
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      return false;
-    }
-    const hostname = parsed.hostname.toLowerCase();
-    return hostname === ALLOWED_IMAGE_HOST || hostname.endsWith(`.${ALLOWED_IMAGE_HOST}`);
-  } catch {
-    return false;
-  }
+  return isAllowedProductImageUrl("rakuten_api", value);
 }
 
 /**
  * 許可ホストのURLのみ正規化して返す。許可外・不正な値は null を返す。
  */
 export function sanitizeRakutenImageUrl(value: string | null | undefined): string | null {
-  if (!isAllowedRakutenImageUrl(value)) {
-    return null;
-  }
-
-  try {
-    return new URL(value as string).toString();
-  } catch {
-    return null;
-  }
+  return sanitizeProductImageUrl("rakuten_api", value);
 }

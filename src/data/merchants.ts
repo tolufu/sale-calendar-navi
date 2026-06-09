@@ -51,11 +51,29 @@ export const merchants: Merchant[] = [
     affiliate: null,
     affiliateProvider: null,
     supportsAffiliate: false,
-    supportsApi: false,
-    supportsPriceAutoFetch: false,
+    supportsApi: true,
+    supportsPriceAutoFetch: true,
     supportsSaleCalendar: false,
-    integrationStatus: "planned",
+    integrationStatus: "available",
     isActive: true,
     sortOrder: 30
+  },
+  {
+    merchantId: "ebay",
+    name: "eBay",
+    type: "marketplace",
+    colorToken: "blue-box",
+    placeholderKey: "blue-box",
+    placeholderImageType: "generic",
+    urlHosts: ["ebay.com", "ebay.co.jp"],
+    affiliate: null,
+    affiliateProvider: null,
+    supportsAffiliate: false,
+    supportsApi: true,
+    supportsPriceAutoFetch: true,
+    supportsSaleCalendar: false,
+    integrationStatus: "available",
+    isActive: true,
+    sortOrder: 40
   }
 ];

@@ -5,7 +5,7 @@ import { saleEvents } from "@/data/sales";
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticPaths = ["/", "/calendar", "/wishlist", "/articles", "/history", "/settings/notifications", "/terms", "/privacy", "/operator", "/contact"];
+  const staticPaths = ["/", "/calendar", "/compare", "/wishlist", "/articles", "/history", "/settings/notifications", "/terms", "/privacy", "/operator", "/contact"];
   return [
     ...staticPaths.map((path) => ({ url: `${baseUrl}${path}`, lastModified: new Date() })),
     ...saleEvents.map((sale) => ({ url: `${baseUrl}/sales/${sale.id}`, lastModified: new Date(sale.startAt) })),

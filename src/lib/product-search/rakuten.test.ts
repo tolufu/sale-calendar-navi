@@ -46,6 +46,18 @@ describe("RakutenIchibaProductSearchProvider", () => {
     expect(requestUrl.searchParams.get("accessKey")).toBe("access-key");
   });
 
+  it("登録ドメイン一致のOrigin/Refererヘッダを付与する", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ Items: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key", undefined, "https://example.com/");
+
+    await provider.search({ query: "テスト" });
+
+    const init = fetchMock.mock.calls[0][1] as { headers: Record<string, string> };
+    expect(init.headers.Origin).toBe("https://example.com");
+    expect(init.headers.Referer).toBe("https://example.com/");
+  });
+
   it("楽天APIレスポンスの許可画像とaffiliateUrlを候補へ変換する", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

@@ -4,12 +4,12 @@ import type {
   ProductSearchResult,
   RakutenProductSearchProvider
 } from "@/lib/product-search/types";
+import { buildMockSearchResult, clampSearchLimit, createSearchFailureResult, extractSearchKeyword, numericOrNull, withTimeout } from "@/lib/product-search/common";
 import { sanitizeRakutenImageUrl } from "@/lib/utils/rakuten-image";
 
-// 2026-02-10の楽天ウェブサービス刷新で新ドメイン/新パスに移行。applicationIdとaccessKeyの両方が必須。
-const RAKUTEN_SEARCH_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601";
-const DEFAULT_LIMIT = 5;
-const SEARCH_TIMEOUT_MS = 8000;
+const MERCHANT_ID = "rakuten";
+// 2026刷新後の楽天ウェブサービス。新ドメイン/新パスに移行し、applicationIdとaccessKeyの両方＋登録ドメイン一致のOrigin/Refererが必須。
+const RAKUTEN_SEARCH_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401";
 const SEARCH_FAILURE_MESSAGE = "楽天APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。";
 
 type RakutenImage = {
@@ -22,6 +22,9 @@ type RakutenApiItem = {
   itemUrl?: string;
   affiliateUrl?: string;
   itemPrice?: number;
+  postageFlag?: number;
+  pointRate?: number;
+  availability?: number;
   shopName?: string;
   mediumImageUrls?: RakutenImage[];
   smallImageUrls?: RakutenImage[];
@@ -37,11 +40,7 @@ function firstImageUrl(item: RakutenApiItem): string | null {
 }
 
 function searchFailureResult(): ProductSearchResult {
-  return {
-    configured: true,
-    candidates: [],
-    message: SEARCH_FAILURE_MESSAGE
-  };
+  return createSearchFailureResult(SEARCH_FAILURE_MESSAGE);
 }
 
 function toCandidate(item: RakutenApiItem): ProductSearchCandidate | null {
@@ -50,75 +49,52 @@ function toCandidate(item: RakutenApiItem): ProductSearchCandidate | null {
   }
 
   const imageUrl = firstImageUrl(item);
+  const price = numericOrNull(item.itemPrice);
+  const pointRate = numericOrNull(item.pointRate);
 
   return {
-    provider: "rakuten",
+    provider: MERCHANT_ID,
     itemCode: item.itemCode ?? item.itemUrl,
     title: item.itemName,
     itemUrl: item.itemUrl,
     affiliateUrl: item.affiliateUrl ?? null,
     imageUrl,
     imageSource: imageUrl ? "rakuten_api" : "placeholder",
-    price: typeof item.itemPrice === "number" && Number.isFinite(item.itemPrice) ? item.itemPrice : null,
+    price,
+    shippingFee: item.postageFlag === 1 ? 0 : null,
+    points: price !== null && pointRate !== null
+      ? Math.floor(price * pointRate / 100)
+      : null,
+    currency: "JPY",
+    inStock: typeof item.availability === "number" ? item.availability === 1 : null,
     shopName: item.shopName ?? null
   };
 }
 
-export function extractRakutenKeyword(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    const pathParts = parsed.pathname.split("/").filter(Boolean);
-    return decodeURIComponent(pathParts[pathParts.length - 1] ?? parsed.hostname);
-  } catch {
-    return trimmed;
-  }
-}
-
 function mockSearch(input: ProductSearchInput): ProductSearchResult {
-  const keyword = extractRakutenKeyword(input.query);
-  if (!keyword) {
-    return {
-      configured: false,
-      candidates: [],
-      message: "楽天APIキーが未設定です。キーワードを入れるとモック候補を表示できます。"
-    };
-  }
-
-  return {
-    configured: false,
-    candidates: [
-      {
-        provider: "rakuten",
-        itemCode: `mock-${encodeURIComponent(keyword)}`,
-        title: `${keyword}（モック候補）`,
-        itemUrl: "https://item.rakuten.co.jp/example/mock-item/",
-        affiliateUrl: null,
-        imageUrl: null,
-        imageSource: "placeholder",
-        price: null,
-        shopName: "楽天API未設定"
-      }
-    ],
-    message: "楽天APIキーが未設定のため、プレースホルダー候補を表示しています。手入力のまま保存できます。"
-  };
+  return buildMockSearchResult({
+    provider: MERCHANT_ID,
+    keyword: extractSearchKeyword(input.query),
+    exampleUrl: "https://item.rakuten.co.jp/example/mock-item/",
+    emptyMessage: "楽天APIキーが未設定です。キーワードを入れるとモック候補を表示できます。",
+    configuredMessage: "楽天APIキーが未設定のため、プレースホルダー候補を表示しています。手入力のまま保存できます。"
+  });
 }
 
 export class RakutenIchibaProductSearchProvider implements RakutenProductSearchProvider {
-  readonly merchantId = "rakuten";
+  readonly merchantId = MERCHANT_ID;
 
   constructor(
     private readonly applicationId = process.env.RAKUTEN_APPLICATION_ID,
     private readonly accessKey = process.env.RAKUTEN_ACCESS_KEY,
-    private readonly affiliateId = process.env.RAKUTEN_AFFILIATE_ID
+    private readonly affiliateId = process.env.RAKUTEN_AFFILIATE_ID,
+    // 刷新後の楽天APIは登録ドメイン一致のOrigin/Refererを要求する。サーバー実行ではfetchが自動付与しないため明示する。
+    // 値はアプリ登録時のApplication URLと一致が必要（localhost等の汎用値は403）。
+    private readonly apiReferer = process.env.RAKUTEN_API_REFERER ?? process.env.NEXT_PUBLIC_SITE_URL
   ) {}
 
   async search(input: ProductSearchInput): Promise<ProductSearchResult> {
-    const keyword = extractRakutenKeyword(input.query);
+    const keyword = extractSearchKeyword(input.query);
     // 刷新後の楽天APIは applicationId と accessKey の両方が必須。片方でも欠ければ未設定扱い。
     if (!this.applicationId || !this.accessKey) {
       return mockSearch(input);
@@ -131,7 +107,7 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
       };
     }
 
-    const limit = Math.min(Math.max(input.limit ?? DEFAULT_LIMIT, 1), 10);
+    const limit = clampSearchLimit(input.limit);
     const url = new URL(RAKUTEN_SEARCH_ENDPOINT);
     url.searchParams.set("format", "json");
     url.searchParams.set("applicationId", this.applicationId);
@@ -143,14 +119,20 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
       url.searchParams.set("affiliateId", this.affiliateId);
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
+    const headers: Record<string, string> = { accept: "application/json" };
+    if (this.apiReferer) {
+      const origin = this.apiReferer.replace(/\/+$/, "");
+      headers.Origin = origin;
+      headers.Referer = `${origin}/`;
+    }
+
+    const timeout = withTimeout();
 
     try {
       const response = await fetch(url, {
-        headers: { accept: "application/json" },
+        headers,
         next: { revalidate: 3600 },
-        signal: controller.signal
+        signal: timeout.signal
       });
 
       if (!response.ok) {
@@ -172,7 +154,7 @@ export class RakutenIchibaProductSearchProvider implements RakutenProductSearchP
     } catch {
       return searchFailureResult();
     } finally {
-      clearTimeout(timeoutId);
+      timeout.clear();
     }
   }
 }
