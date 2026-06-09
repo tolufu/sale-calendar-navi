@@ -106,6 +106,22 @@ describe("RakutenIchibaProductSearchProvider", () => {
     });
   });
 
+  it("401/403（認証/参照元エラー）は設定確認を促す専用メッセージを返す", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      text: async () => '{"errors":{"errorMessage":"HTTP_REFERRER_NOT_ALLOWED"}}'
+    }));
+    const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
+
+    const result = await provider.search({ query: "テスト" });
+
+    expect(result.configured).toBe(true);
+    expect(result.candidates).toEqual([]);
+    expect(result.message).toContain("認証に失敗");
+    expect(result.message).toContain("RAKUTEN_API_REFERER");
+  });
+
   it("楽天APIへのfetchが失敗した場合は空候補と手入力継続メッセージを返す", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network error")));
     const provider = new RakutenIchibaProductSearchProvider("app-id", "access-key");
