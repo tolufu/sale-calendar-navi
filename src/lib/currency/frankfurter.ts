@@ -1,7 +1,8 @@
 import { withTimeout } from "@/lib/product-search/common";
 
 const DEFAULT_FRANKFURTER_ENDPOINT = "https://api.frankfurter.dev";
-const cache = new Map<string, ExchangeRateResult>();
+const CACHE_TTL_MS = 60 * 60 * 1000;
+const cache = new Map<string, { result: ExchangeRateResult; expiresAt: number }>();
 
 export type ExchangeRateResult = {
   ok: boolean;
@@ -34,8 +35,8 @@ export class FrankfurterExchangeRateProvider {
 
     const cacheKey = `${base}:${quote}`;
     const cached = cache.get(cacheKey);
-    if (cached) {
-      return cached;
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.result;
     }
 
     const timeout = withTimeout();
@@ -64,7 +65,7 @@ export class FrankfurterExchangeRateProvider {
         date: body.date ?? null,
         message: null
       };
-      cache.set(cacheKey, result);
+      cache.set(cacheKey, { result, expiresAt: Date.now() + CACHE_TTL_MS });
       return result;
     } catch {
       return failure(base, quote, "為替レートを取得できませんでした。元通貨の参考値として表示します。");

@@ -1,7 +1,8 @@
 import type { ProductSearchCandidate, ProductSearchInput, ProductSearchResult } from "@/lib/product-search/types";
-import { clampSearchLimit, createMockCandidate, createSearchFailureResult, numericOrNull, withTimeout } from "@/lib/product-search/common";
+import { buildMockSearchResult, clampSearchLimit, createSearchFailureResult, extractSearchKeyword, numericOrNull, withTimeout } from "@/lib/product-search/common";
 import { sanitizeYahooImageUrl } from "@/lib/utils/product-image";
 
+const MERCHANT_ID = "yahoo-shopping";
 const YAHOO_SEARCH_ENDPOINT = "https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch";
 const SEARCH_FAILURE_MESSAGE = "Yahoo!ショッピングAPIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。";
 
@@ -33,21 +34,6 @@ type YahooApiResponse = {
   hits?: YahooApiItem[];
 };
 
-export function extractYahooKeyword(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    const pathParts = parsed.pathname.split("/").filter(Boolean);
-    return decodeURIComponent(pathParts[pathParts.length - 1]?.replace(/\.html$/, "") ?? parsed.hostname);
-  } catch {
-    return trimmed;
-  }
-}
-
 function buildAffiliateUrl(itemUrl: string, vc: string | undefined): string | null {
   if (!vc) {
     return null;
@@ -62,14 +48,10 @@ function buildAffiliateUrl(itemUrl: string, vc: string | undefined): string | nu
 }
 
 function pointAmount(item: YahooApiItem): number | null {
-  const values = [
-    item.point?.amount,
-    item.point?.lyLimitedBonusAmount,
-    item.point?.premiumAmount,
-    item.point?.lyLimitedPremiumBonusAmount
-  ].map(numericOrNull);
-  const total = values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
-  return total > 0 ? total : null;
+  // amountは全ユーザー共通の付与ポイント。premium/期間限定ボーナスは会員条件付きで二重計上の恐れもあるため、
+  // 中立な実質価格比較では基本ポイント(amount)のみを採用する。
+  const amount = numericOrNull(item.point?.amount);
+  return amount && amount > 0 ? amount : null;
 }
 
 function toCandidate(item: YahooApiItem, vc: string | undefined): ProductSearchCandidate | null {
@@ -80,7 +62,7 @@ function toCandidate(item: YahooApiItem, vc: string | undefined): ProductSearchC
   const imageUrl = sanitizeYahooImageUrl(item.image?.medium ?? item.image?.small);
 
   return {
-    provider: "yahoo-shopping",
+    provider: MERCHANT_ID,
     itemCode: item.code ?? item.url,
     title: item.name,
     itemUrl: item.url,
@@ -97,24 +79,17 @@ function toCandidate(item: YahooApiItem, vc: string | undefined): ProductSearchC
 }
 
 function mockSearch(input: ProductSearchInput): ProductSearchResult {
-  const keyword = extractYahooKeyword(input.query);
-  if (!keyword) {
-    return {
-      configured: false,
-      candidates: [],
-      message: "Yahoo!ショッピングAPIキーが未設定です。キーワードを入れるとモック候補を表示できます。"
-    };
-  }
-
-  return {
-    configured: false,
-    candidates: [createMockCandidate("yahoo-shopping", keyword, "https://store.shopping.yahoo.co.jp/example/mock-item.html")],
-    message: "Yahoo!ショッピングAPIキーが未設定のため、プレースホルダー候補を表示しています。手入力のまま保存できます。"
-  };
+  return buildMockSearchResult({
+    provider: MERCHANT_ID,
+    keyword: extractSearchKeyword(input.query, { stripHtmlSuffix: true }),
+    exampleUrl: "https://store.shopping.yahoo.co.jp/example/mock-item.html",
+    emptyMessage: "Yahoo!ショッピングAPIキーが未設定です。キーワードを入れるとモック候補を表示できます。",
+    configuredMessage: "Yahoo!ショッピングAPIキーが未設定のため、プレースホルダー候補を表示しています。手入力のまま保存できます。"
+  });
 }
 
 export class YahooShoppingProductSearchProvider {
-  readonly merchantId = "yahoo-shopping";
+  readonly merchantId = MERCHANT_ID;
 
   constructor(
     private readonly appId = process.env.YAHOO_SHOPPING_APP_ID,
@@ -122,7 +97,7 @@ export class YahooShoppingProductSearchProvider {
   ) {}
 
   async search(input: ProductSearchInput): Promise<ProductSearchResult> {
-    const keyword = extractYahooKeyword(input.query);
+    const keyword = extractSearchKeyword(input.query, { stripHtmlSuffix: true });
     if (!this.appId) {
       return mockSearch(input);
     }

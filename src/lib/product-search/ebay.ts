@@ -1,7 +1,8 @@
 import type { ProductSearchCandidate, ProductSearchInput, ProductSearchResult } from "@/lib/product-search/types";
-import { clampSearchLimit, createMockCandidate, createSearchFailureResult, numericOrNull, withTimeout } from "@/lib/product-search/common";
+import { buildMockSearchResult, clampSearchLimit, createSearchFailureResult, extractSearchKeyword, numericOrNull, withTimeout } from "@/lib/product-search/common";
 import { sanitizeEbayImageUrl } from "@/lib/utils/product-image";
 
+const MERCHANT_ID = "ebay";
 const EBAY_SEARCH_ENDPOINT = "https://api.ebay.com/buy/browse/v1/item_summary/search";
 const EBAY_TOKEN_ENDPOINT = "https://api.ebay.com/identity/v1/oauth2/token";
 const SEARCH_FAILURE_MESSAGE = "eBay Browse APIの検索に失敗しました。時間をおいて再試行するか、手入力で続けてください。";
@@ -81,59 +82,43 @@ function toCandidate(item: EbayApiItem): ProductSearchCandidate | null {
   }
 
   const imageUrl = sanitizeEbayImageUrl(item.image?.imageUrl);
-  const shippingFee = parseMoney(item.shippingOptions?.[0]?.shippingCost);
+  const shippingCost = item.shippingOptions?.[0]?.shippingCost;
+  const currency = item.price?.currency ?? shippingCost?.currency ?? "USD";
+  // 送料が商品価格と異なる通貨で返る場合は、同一レート換算で歪むため採用しない。
+  const shippingFee = shippingCost?.currency && shippingCost.currency !== currency ? null : parseMoney(shippingCost);
+  // 0円出品（オプション選択待ち等のプレースホルダー）は最安誤判定を避けるため未取得扱いにする。
+  const rawPrice = parseMoney(item.price);
+  const price = rawPrice === 0 ? null : rawPrice;
 
   return {
-    provider: "ebay",
+    provider: MERCHANT_ID,
     itemCode: item.itemId ?? item.itemWebUrl,
     title: item.title,
     itemUrl: item.itemWebUrl,
     affiliateUrl: null,
     imageUrl,
     imageSource: imageUrl ? "ebay_api" : "placeholder",
-    price: parseMoney(item.price),
+    price,
     shippingFee,
     points: null,
-    currency: item.price?.currency ?? item.shippingOptions?.[0]?.shippingCost?.currency ?? "USD",
+    currency,
     inStock: inStock(item),
     shopName: item.seller?.username ?? null
   };
 }
 
 function mockSearch(input: ProductSearchInput): ProductSearchResult {
-  const keyword = extractEbayKeyword(input.query);
-  if (!keyword) {
-    return {
-      configured: false,
-      candidates: [],
-      message: "eBay Browse APIキーが未設定です。キーワードを入れるとモック候補を表示できます。"
-    };
-  }
-
-  return {
-    configured: false,
-    candidates: [createMockCandidate("ebay", keyword, "https://www.ebay.com/itm/mock-item")],
-    message: "eBay Browse APIキーが未設定のため、プレースホルダー候補を表示しています。手入力のまま保存できます。"
-  };
-}
-
-export function extractEbayKeyword(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    const pathParts = parsed.pathname.split("/").filter(Boolean);
-    return decodeURIComponent(pathParts[pathParts.length - 1] ?? parsed.hostname);
-  } catch {
-    return trimmed;
-  }
+  return buildMockSearchResult({
+    provider: MERCHANT_ID,
+    keyword: extractSearchKeyword(input.query),
+    exampleUrl: "https://www.ebay.com/itm/mock-item",
+    emptyMessage: "eBay Browse APIキーが未設定です。キーワードを入れるとモック候補を表示できます。",
+    configuredMessage: "eBay Browse APIキーが未設定のため、プレースホルダー候補を表示しています。手入力のまま保存できます。"
+  });
 }
 
 export class EbayBrowseProductSearchProvider {
-  readonly merchantId = "ebay";
+  readonly merchantId = MERCHANT_ID;
 
   constructor(
     private readonly clientId = process.env.EBAY_CLIENT_ID,
@@ -189,7 +174,7 @@ export class EbayBrowseProductSearchProvider {
     if (!this.clientId || !this.clientSecret) {
       return mockSearch(input);
     }
-    const query = extractEbayKeyword(input.query);
+    const query = extractSearchKeyword(input.query);
     if (!query) {
       return { configured: true, candidates: [], message: "eBayの商品URLまたはキーワードを入力してください。" };
     }

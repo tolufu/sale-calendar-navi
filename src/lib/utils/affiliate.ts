@@ -1,19 +1,26 @@
 import type { AffiliateLinkProvider } from "@/lib/providers/types";
 
-const DEFAULT_RAKUTEN_SCID = process.env.NEXT_PUBLIC_RAKUTEN_AFFILIATE_SCID || "af_link_dummy";
+// scid未設定のまま本番で無効なダミータグを付けないよう、af_link_dummyは開発/テスト時のみのプレースホルダーとする。
+function resolveRakutenScid(): string | null {
+  const configured = process.env.NEXT_PUBLIC_RAKUTEN_AFFILIATE_SCID;
+  if (configured) {
+    return configured;
+  }
+  return process.env.NODE_ENV === "production" ? null : "af_link_dummy";
+}
 
 function isRakutenHost(hostname: string): boolean {
   const normalized = hostname.replace(/^www\./, "").toLowerCase();
   return normalized === "rakuten.co.jp" || normalized.endsWith(".rakuten.co.jp");
 }
 
-export function convertRakutenAffiliate(url: string, scid = DEFAULT_RAKUTEN_SCID): string {
+export function convertRakutenAffiliate(url: string, scid = resolveRakutenScid()): string {
   try {
     const parsed = new URL(url);
     if (!isRakutenHost(parsed.hostname)) {
       return url;
     }
-    if (!parsed.searchParams.has("scid")) {
+    if (scid && !parsed.searchParams.has("scid")) {
       parsed.searchParams.set("scid", scid);
     }
     return parsed.toString();

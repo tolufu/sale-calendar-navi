@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { merchants } from "@/data/merchants";
 import { FrankfurterExchangeRateProvider } from "@/lib/currency/frankfurter";
+import { canUseMerchantCapability } from "@/lib/merchants/capabilities";
+import { clampSearchLimit } from "@/lib/product-search/common";
 import type { ProductSearchProviderResult } from "@/lib/product-search/types";
 import { createProductSearchProviders } from "@/lib/product-search/providers";
 import { searchMerchantProducts } from "@/lib/providers/product-search";
-
-const DEFAULT_LIMIT = 5;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,7 +14,8 @@ export async function GET(request: Request) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-  const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? DEFAULT_LIMIT), 1), 10);
+  const rawLimit = searchParams.get("limit");
+  const limit = clampSearchLimit(rawLimit ? Number(rawLimit) : undefined);
 
   if (!query) {
     return NextResponse.json({ query, results: [], message: "商品URLまたはキーワードを入力してください。" }, { status: 400 });
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     .filter((merchant) => merchant.isActive)
     .filter((merchant) => requestedMerchants.length > 0
       ? requestedMerchants.includes(merchant.merchantId)
-      : merchant.supportsApi && merchant.supportsPriceAutoFetch)
+      : canUseMerchantCapability(merchant, "price-auto-fetch"))
     .filter((merchant) => providerByMerchantId[merchant.merchantId]);
 
   const rawResults = await Promise.all(targetMerchants.map(async (merchant): Promise<ProductSearchProviderResult> => {

@@ -23,7 +23,8 @@ describe("YahooShoppingProductSearchProvider", () => {
           inStock: true,
           image: { medium: "https://item-shopping.c.yimg.jp/i/g/store_item" },
           price: 12000,
-          point: { lyLimitedBonusAmount: 120 },
+          // amount=基本付与ポイントのみを採用し、会員条件付きのpremium/期間限定ボーナスは含めない。
+          point: { amount: 120, premiumAmount: 50, lyLimitedBonusAmount: 80 },
           shipping: { code: 2 },
           seller: { name: "Yahoo店舗" }
         }]
